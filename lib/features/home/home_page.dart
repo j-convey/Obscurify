@@ -21,6 +21,7 @@ class HomePage extends StatelessWidget {
               'Good ${_getTimeOfDay()}',
               style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
             ),
             const SizedBox(height: 24),
@@ -58,6 +59,7 @@ class HomePage extends StatelessWidget {
               'Recently played',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
             ),
             const SizedBox(height: 16),
@@ -118,6 +120,7 @@ class _QuickAccessTile extends StatelessWidget {
                 label,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
               ),
             ),
