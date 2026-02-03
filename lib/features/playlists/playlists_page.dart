@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../core/models/playlists.dart';
+import '../../core/services/storage_service.dart';
 import 'playlist_service.dart';
 
 class PlaylistsPage extends StatefulWidget {
-  final String serverUrl;
-  final String token;
   final Function(Widget) onNavigate;
 
   const PlaylistsPage({
     super.key,
-    required this.serverUrl,
-    required this.token,
     required this.onNavigate,
   });
 
@@ -20,8 +17,11 @@ class PlaylistsPage extends StatefulWidget {
 
 class _PlaylistsPageState extends State<PlaylistsPage> {
   final PlaylistService _playlistService = PlaylistService();
+  final StorageService _storageService = StorageService();
   List<Playlist> _playlists = [];
   bool _isLoading = true;
+  String? _token;
+  String? _serverUrl;
 
   @override
   void initState() {
@@ -30,15 +30,33 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
   }
 
   Future<void> _loadPlaylists() async {
-    if (widget.serverUrl.isEmpty || widget.token.isEmpty) {
-      setState(() => _isLoading = false);
-      return;
-    }
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
+      final token = await _storageService.getPlexToken();
+      final serverUrl = await _storageService.getServerUrl();
+
+      if (token == null || serverUrl == null || token.isEmpty || serverUrl.isEmpty) {
+        // First, try to load from local DB
+        final localPlaylists = await _playlistService.getLocalPlaylists();
+        if (mounted) {
+          setState(() {
+            _playlists = localPlaylists;
+            _isLoading = false;
+            // if local is empty, we still might want to show an error or empty state
+          });
+        }
+        return;
+      }
+
+      _token = token;
+      _serverUrl = serverUrl;
+
       final playlists = await _playlistService.syncPlaylists(
-        widget.serverUrl,
-        widget.token,
+        _serverUrl!,
+        _token!,
       );
       if (mounted) {
         setState(() {
@@ -93,8 +111,8 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
         itemBuilder: (context, index) {
           return _PlaylistCard(
             playlist: _playlists[index],
-            serverUrl: widget.serverUrl,
-            token: widget.token,
+            serverUrl: _serverUrl ?? '',
+            token: _token ?? '',
             onTap: () {
               // TODO: Navigate to playlist details
             },

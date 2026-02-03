@@ -58,11 +58,9 @@ class HomePage extends StatelessWidget {
                     icon: Icons.playlist_play,
                     label: 'Playlists',
                     color: Colors.blue,
-                    onTap: () async {
-                      if (onNavigate != null && token != null && serverUrl != null) {
+                    onTap: () {
+                      if (onNavigate != null) {
                         onNavigate!(PlaylistsPage(
-                          serverUrl: serverUrl!,
-                          token: token!,
                           onNavigate: onNavigate!,
                         ));
                       }
