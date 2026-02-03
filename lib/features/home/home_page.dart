@@ -1,12 +1,24 @@
 import 'package:flutter/material.dart';
 import '../../core/services/audio_player_service.dart';
+import '../../core/services/storage_service.dart';
 import '../songs/songs_page.dart';
+import '../playlists/playlists_page.dart';
 
 class HomePage extends StatelessWidget {
   final Function(Widget)? onNavigate;
   final AudioPlayerService? audioPlayerService;
-  
-  const HomePage({super.key, this.onNavigate, this.audioPlayerService});
+  final StorageService? storageService;
+  final String? token;
+  final String? serverUrl;
+
+  const HomePage({
+    super.key,
+    this.onNavigate,
+    this.audioPlayerService,
+    this.storageService,
+    this.token,
+    this.serverUrl,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,8 +58,14 @@ class HomePage extends StatelessWidget {
                     icon: Icons.playlist_play,
                     label: 'Playlists',
                     color: Colors.blue,
-                    onTap: () {
-                      // TODO: Navigate to playlists
+                    onTap: () async {
+                      if (onNavigate != null && token != null && serverUrl != null) {
+                        onNavigate!(PlaylistsPage(
+                          serverUrl: serverUrl!,
+                          token: token!,
+                          onNavigate: onNavigate!,
+                        ));
+                      }
                     },
                   ),
                 ),

@@ -16,6 +16,7 @@ Future<void> _onCreate(Database db, int version) async {
       year INTEGER,
       added_at INTEGER,
       media_data TEXT,
+      user_rating REAL,
       UNIQUE(server_id, track_key)
     )
   ''');
@@ -66,5 +67,9 @@ Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
         leaf_count INTEGER
       )
     ''');
+  }
+
+  if (oldVersion < 3) {
+    await db.execute('ALTER TABLE tracks ADD COLUMN user_rating REAL');
   }
 }

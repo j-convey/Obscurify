@@ -39,6 +39,9 @@ class _MainScreenState extends State<MainScreen> {
     _currentPage = HomePage(
       onNavigate: _navigateToPage,
       audioPlayerService: _audioPlayerService,
+      storageService: _storageService,
+      token: _currentToken,
+      serverUrl: _currentServerUrl,
     );
     _navigationHistory.add(_currentPage);
     _currentHistoryIndex = 0;
@@ -46,8 +49,18 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _loadCredentials() async {
     _currentToken = await _storageService.getPlexToken();
+    _currentServerUrl = await _storageService.getServerUrl();
     if (mounted) {
-      setState(() {});
+      setState(() {
+        _currentPage = HomePage(
+          onNavigate: _navigateToPage,
+          audioPlayerService: _audioPlayerService,
+          storageService: _storageService,
+          token: _currentToken,
+          serverUrl: _currentServerUrl,
+        );
+        _navigationHistory[_currentHistoryIndex] = _currentPage;
+      });
     }
   }
 
@@ -102,7 +115,13 @@ class _MainScreenState extends State<MainScreen> {
             onForwardPressed: _goForward,
             canGoBack: _currentHistoryIndex > 0,
             canGoForward: _currentHistoryIndex < _navigationHistory.length - 1,
-            onHomeTap: () => _navigateToPage(HomePage(onNavigate: _navigateToPage, audioPlayerService: _audioPlayerService)),
+            onHomeTap: () => _navigateToPage(HomePage(
+              onNavigate: _navigateToPage,
+              audioPlayerService: _audioPlayerService,
+              storageService: _storageService,
+              token: _currentToken,
+              serverUrl: _currentServerUrl,
+            )),
             onProfileTap: () => _navigateToPage(ProfilePage(storageService: _storageService)),
             onSettingsTap: () => _navigateToPage(const SettingsPage()),
           ),

@@ -33,6 +33,7 @@ extension TracksExtension on DatabaseService {
           'year': track['year'] ?? 0,
           'added_at': track['addedAt'],
           'media_data': jsonEncode(track['Media'] ?? []),
+          'user_rating': track['userRating'],
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
@@ -72,6 +73,7 @@ extension TracksExtension on DatabaseService {
       'serverId': map['server_id'] as String,
       'libraryKey': map['library_key'] as String,
       'Media': _parseMediaData(map['media_data'] as String),
+      'userRating': map['user_rating'] as double?,
     }).toList();
   }
 
@@ -99,6 +101,7 @@ extension TracksExtension on DatabaseService {
       'serverId': map['server_id'] as String,
       'libraryKey': map['library_key'] as String,
       'Media': _parseMediaData(map['media_data'] as String),
+      'userRating': map['user_rating'] as double?,
     }).toList();
   }
 
@@ -179,6 +182,33 @@ extension TracksExtension on DatabaseService {
       'serverId': map['server_id'] as String,
       'libraryKey': map['library_key'] as String,
       'Media': _parseMediaData(map['media_data'] as String),
+      'userRating': map['user_rating'] as double?,
+    }).toList();
+  }
+
+  // Get liked tracks (user_rating >= 10.0)
+  Future<List<Map<String, dynamic>>> getLikedTracks() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'tracks',
+      where: 'user_rating >= ?',
+      whereArgs: [10.0], // Plex typically uses 10.0 for "Liked"
+      orderBy: 'title ASC',
+    );
+
+    return maps.map((map) => {
+      'title': map['title'] as String,
+      'artist': map['artist'] as String?,
+      'album': map['album'] as String?,
+      'duration': map['duration'] as int,
+      'key': map['track_key'] as String,
+      'thumb': map['thumb'] as String?,
+      'year': map['year'] as int?,
+      'addedAt': map['added_at'] as int?,
+      'serverId': map['server_id'] as String,
+      'libraryKey': map['library_key'] as String,
+      'Media': _parseMediaData(map['media_data'] as String),
+      'userRating': map['user_rating'] as double?,
     }).toList();
   }
 }

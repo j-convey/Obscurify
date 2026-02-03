@@ -1,4 +1,4 @@
-library database_service;
+library;
 
 import 'dart:io';
 import 'dart:convert';
@@ -36,7 +36,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
