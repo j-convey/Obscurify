@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
 import '../services/audio_player_service.dart';
 
-class PlayerBar extends StatelessWidget {
+class PlayerBar extends StatefulWidget {
   final AudioPlayerService playerService;
 
   const PlayerBar({super.key, required this.playerService});
+
+  @override
+  State<PlayerBar> createState() => _PlayerBarState();
+}
+
+class _PlayerBarState extends State<PlayerBar> {
+  late double _currentVolume;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentVolume = 0.7;
+  }
 
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -16,9 +29,9 @@ class PlayerBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: playerService,
+      listenable: widget.playerService,
       builder: (context, child) {
-        final track = playerService.currentTrack;
+        final track = widget.playerService.currentTrack;
         
         if (track == null) {
           return const SizedBox.shrink();
@@ -50,12 +63,12 @@ class PlayerBar extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: track['thumb'] != null &&
-                                playerService.currentServerUrl != null &&
-                                playerService.currentToken != null
+                                widget.playerService.currentServerUrl != null &&
+                                widget.playerService.currentToken != null
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
                                 child: Image.network(
-                                  '${playerService.currentServerUrl}${track['thumb']}?X-Plex-Token=${playerService.currentToken}',
+                                  '${widget.playerService.currentServerUrl}${track['thumb']}?X-Plex-Token=${widget.playerService.currentToken}',
                                   width: 56,
                                   height: 56,
                                   fit: BoxFit.cover,
@@ -141,7 +154,7 @@ class PlayerBar extends StatelessWidget {
                             icon: const Icon(Icons.skip_previous, size: 28),
                             color: Colors.white,
                             onPressed: () {
-                              playerService.previous();
+                              widget.playerService.previous();
                             },
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
@@ -157,7 +170,7 @@ class PlayerBar extends StatelessWidget {
                             ),
                             child: IconButton(
                               icon: Icon(
-                                playerService.isPlaying
+                                widget.playerService.isPlaying
                                     ? Icons.pause
                                     : Icons.play_arrow,
                                 size: 18,
@@ -165,7 +178,7 @@ class PlayerBar extends StatelessWidget {
                               color: Colors.black,
                               padding: EdgeInsets.zero,
                               onPressed: () {
-                                playerService.togglePlayPause();
+                                widget.playerService.togglePlayPause();
                               },
                             ),
                           ),
@@ -175,7 +188,7 @@ class PlayerBar extends StatelessWidget {
                             icon: const Icon(Icons.skip_next, size: 28),
                             color: Colors.white,
                             onPressed: () {
-                              playerService.next();
+                              widget.playerService.next();
                             },
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
@@ -199,7 +212,7 @@ class PlayerBar extends StatelessWidget {
                         children: [
                           // Current time
                           Text(
-                            _formatDuration(playerService.position),
+                            _formatDuration(widget.playerService.position),
                             style: TextStyle(
                               color: Colors.grey[400],
                               fontSize: 11,
@@ -222,12 +235,12 @@ class PlayerBar extends StatelessWidget {
                                 inactiveTrackColor: Colors.grey[700],
                               ),
                               child: Slider(
-                                value: playerService.position.inSeconds.toDouble(),
-                                max: playerService.duration.inSeconds.toDouble() > 0
-                                    ? playerService.duration.inSeconds.toDouble()
+                                value: widget.playerService.position.inSeconds.toDouble(),
+                                max: widget.playerService.duration.inSeconds.toDouble() > 0
+                                    ? widget.playerService.duration.inSeconds.toDouble()
                                     : 1.0,
                                 onChanged: (value) {
-                                  playerService.seek(Duration(seconds: value.toInt()));
+                                  widget.playerService.seek(Duration(seconds: value.toInt()));
                                 },
                               ),
                             ),
@@ -235,7 +248,7 @@ class PlayerBar extends StatelessWidget {
                           const SizedBox(width: 8),
                           // Total duration
                           Text(
-                            _formatDuration(playerService.duration),
+                            _formatDuration(widget.playerService.duration),
                             style: TextStyle(
                               color: Colors.grey[400],
                               fontSize: 11,
@@ -268,7 +281,15 @@ class PlayerBar extends StatelessWidget {
                         },
                       ),
                       // Volume control
-                      Icon(Icons.volume_up, size: 20, color: Colors.grey[400]),
+                      Icon(
+                        _currentVolume == 0 
+                          ? Icons.volume_mute 
+                          : _currentVolume < 0.5 
+                            ? Icons.volume_down 
+                            : Icons.volume_up,
+                        size: 20,
+                        color: _currentVolume == 0 ? Colors.red : Colors.grey[400],
+                      ),
                       const SizedBox(width: 8),
                       SizedBox(
                         width: 100,
@@ -286,9 +307,14 @@ class PlayerBar extends StatelessWidget {
                             inactiveTrackColor: Colors.grey[700],
                           ),
                           child: Slider(
-                            value: 0.7,
+                            value: _currentVolume,
+                            min: 0.0,
+                            max: 1.0,
                             onChanged: (value) {
-                              // TODO: Implement volume control
+                              setState(() {
+                                _currentVolume = value;
+                              });
+                              widget.playerService.setVolume(value);
                             },
                           ),
                         ),

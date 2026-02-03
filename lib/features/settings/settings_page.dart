@@ -10,15 +10,15 @@ class SettingsPage extends StatelessWidget {
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('Settings'),
+        title: const Text('Settings', style: TextStyle(color: Colors.white)),
       ),
       body: ListView(
         children: [
           ListTile(
-            leading: const Icon(Icons.dns),
-            title: const Text('Server'),
-            subtitle: const Text('Configure Plex server connection'),
-            trailing: const Icon(Icons.chevron_right),
+            leading: const Icon(Icons.dns, color: Colors.white),
+            title: const Text('Server', style: TextStyle(color: Colors.white)),
+            subtitle: const Text('Configure Plex server connection', style: TextStyle(color: Colors.grey)),
+            trailing: const Icon(Icons.chevron_right, color: Colors.white),
             onTap: () {
               Navigator.push(
                 context,
@@ -30,10 +30,10 @@ class SettingsPage extends StatelessWidget {
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('About'),
-            subtitle: const Text('App information'),
-            trailing: const Icon(Icons.chevron_right),
+            leading: const Icon(Icons.info_outline, color: Colors.white),
+            title: const Text('About', style: TextStyle(color: Colors.white)),
+            subtitle: const Text('App information', style: TextStyle(color: Colors.grey)),
+            trailing: const Icon(Icons.chevron_right, color: Colors.white),
             onTap: () {
               // TODO: Implement About page
             },
