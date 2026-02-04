@@ -17,6 +17,13 @@ Future<void> _onCreate(Database db, int version) async {
       added_at INTEGER,
       media_data TEXT,
       user_rating REAL,
+      rating_key TEXT,
+      grandparent_rating_key TEXT,
+      grandparent_title TEXT,
+      grandparent_thumb TEXT,
+      grandparent_art TEXT,
+      parent_title TEXT,
+      parent_thumb TEXT,
       UNIQUE(server_id, track_key)
     )
   ''');
@@ -71,5 +78,17 @@ Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
 
   if (oldVersion < 3) {
     await db.execute('ALTER TABLE tracks ADD COLUMN user_rating REAL');
+  }
+
+  if (oldVersion < 4) {
+    // Add artist-related columns for navigation
+    await db.execute('ALTER TABLE tracks ADD COLUMN rating_key TEXT');
+    await db.execute('ALTER TABLE tracks ADD COLUMN grandparent_rating_key TEXT');
+    await db.execute('ALTER TABLE tracks ADD COLUMN grandparent_title TEXT');
+    await db.execute('ALTER TABLE tracks ADD COLUMN grandparent_thumb TEXT');
+    await db.execute('ALTER TABLE tracks ADD COLUMN grandparent_art TEXT');
+    await db.execute('ALTER TABLE tracks ADD COLUMN parent_title TEXT');
+    await db.execute('ALTER TABLE tracks ADD COLUMN parent_thumb TEXT');
+    print('DATABASE: Migrated to version 4 - added artist/album columns');
   }
 }

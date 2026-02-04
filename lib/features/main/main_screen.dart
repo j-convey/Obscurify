@@ -126,7 +126,10 @@ class _MainScreenState extends State<MainScreen> {
             onSettingsTap: () => _navigateToPage(SettingsPage(onNavigate: _navigateToPage)),
           ),
           Expanded(child: _currentPage),
-          PlayerBar(playerService: _audioPlayerService),
+          PlayerBar(
+            playerService: _audioPlayerService,
+            onNavigate: _navigateToPage,
+          ),
         ],
       ),
     );

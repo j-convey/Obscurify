@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/services/plex_auth_service.dart';
+import '../../core/services/plex/plex_services.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/audio_player_service.dart';
 import '../../../core/database/database_service.dart';
@@ -19,7 +19,7 @@ class SongsPage extends StatefulWidget {
 }
 
 class _SongsPageState extends State<SongsPage> {
-  final PlexAuthService _plexService = PlexAuthService();
+  final PlexServerService _serverService = PlexServerService();
   final StorageService _storageService = StorageService();
   final DatabaseService _dbService = DatabaseService();
   
@@ -29,7 +29,7 @@ class _SongsPageState extends State<SongsPage> {
   int? _hoveredIndex;
   String? _currentToken;
   String? _currentServerUrl;
-  final Map<String, String> _serverUrls = {};
+  Map<String, String> _serverUrls = {};
   
   // Sorting state
   String _sortColumn = 'addedAt';
@@ -99,17 +99,10 @@ class _SongsPageState extends State<SongsPage> {
       if (token == null) return;
 
       _currentToken = token;
-      final servers = await _plexService.getServers(token);
       
-      for (var server in servers) {
-        final machineIdentifier = server['clientIdentifier'] as String;
-        final connections = server['connections'] as List<dynamic>;
-        final serverUrl = _plexService.getBestConnectionUrl(connections);
-        
-        if (serverUrl != null) {
-          _serverUrls[machineIdentifier] = serverUrl;
-        }
-      }
+      // Use centralized server URL fetching
+      _serverUrls = await _serverService.fetchServerUrlMap(token);
+      debugPrint('SONGS_PAGE: Loaded ${_serverUrls.length} server URLs');
       
       // Pass server URLs to audio service
       if (widget.audioPlayerService != null) {
@@ -120,7 +113,7 @@ class _SongsPageState extends State<SongsPage> {
         _currentServerUrl = _serverUrls.values.first;
       }
     } catch (e) {
-      // Silently fail - will fall back to current server URL
+      debugPrint('SONGS_PAGE: Error loading server URLs: $e');
     }
   }
 

@@ -34,6 +34,14 @@ extension TracksExtension on DatabaseService {
           'added_at': track['addedAt'],
           'media_data': jsonEncode(track['Media'] ?? []),
           'user_rating': track['userRating'],
+          // Artist and album info for navigation
+          'rating_key': track['ratingKey']?.toString(),
+          'grandparent_rating_key': track['grandparentRatingKey']?.toString(),
+          'grandparent_title': track['grandparentTitle'],
+          'grandparent_thumb': track['grandparentThumb'],
+          'grandparent_art': track['grandparentArt'],
+          'parent_title': track['parentTitle'],
+          'parent_thumb': track['parentThumb'],
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
@@ -61,7 +69,12 @@ extension TracksExtension on DatabaseService {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('tracks');
 
-    return maps.map((map) => {
+    return maps.map((map) => _mapTrackFromDb(map)).toList();
+  }
+
+  // Helper method to map database row to track format
+  Map<String, dynamic> _mapTrackFromDb(Map<String, dynamic> map) {
+    return {
       'title': map['title'] as String,
       'artist': map['artist'] as String?,
       'album': map['album'] as String?,
@@ -72,9 +85,17 @@ extension TracksExtension on DatabaseService {
       'addedAt': map['added_at'] as int?,
       'serverId': map['server_id'] as String,
       'libraryKey': map['library_key'] as String,
-      'Media': _parseMediaData(map['media_data'] as String),
+      'Media': _parseMediaData(map['media_data'] as String? ?? ''),
       'userRating': map['user_rating'] as double?,
-    }).toList();
+      // Artist and album info for navigation
+      'ratingKey': map['rating_key'] as String?,
+      'grandparentRatingKey': map['grandparent_rating_key'] as String?,
+      'grandparentTitle': map['grandparent_title'] as String?,
+      'grandparentThumb': map['grandparent_thumb'] as String?,
+      'grandparentArt': map['grandparent_art'] as String?,
+      'parentTitle': map['parent_title'] as String?,
+      'parentThumb': map['parent_thumb'] as String?,
+    };
   }
 
   // Get tracks for specific server/library
@@ -89,20 +110,7 @@ extension TracksExtension on DatabaseService {
       whereArgs: [serverId, libraryKey],
     );
 
-    return maps.map((map) => {
-      'title': map['title'] as String,
-      'artist': map['artist'] as String?,
-      'album': map['album'] as String?,
-      'duration': map['duration'] as int,
-      'key': map['track_key'] as String,
-      'thumb': map['thumb'] as String?,
-      'year': map['year'] as int?,
-      'addedAt': map['added_at'] as int?,
-      'serverId': map['server_id'] as String,
-      'libraryKey': map['library_key'] as String,
-      'Media': _parseMediaData(map['media_data'] as String),
-      'userRating': map['user_rating'] as double?,
-    }).toList();
+    return maps.map((map) => _mapTrackFromDb(map)).toList();
   }
 
   // Get sync metadata
@@ -170,20 +178,7 @@ extension TracksExtension on DatabaseService {
       orderBy: 'title ASC',
     );
 
-    return maps.map((map) => {
-      'title': map['title'] as String,
-      'artist': map['artist'] as String?,
-      'album': map['album'] as String?,
-      'duration': map['duration'] as int,
-      'key': map['track_key'] as String,
-      'thumb': map['thumb'] as String?,
-      'year': map['year'] as int?,
-      'addedAt': map['added_at'] as int?,
-      'serverId': map['server_id'] as String,
-      'libraryKey': map['library_key'] as String,
-      'Media': _parseMediaData(map['media_data'] as String),
-      'userRating': map['user_rating'] as double?,
-    }).toList();
+    return maps.map((map) => _mapTrackFromDb(map)).toList();
   }
 
   // Get liked tracks (user_rating >= 10.0)
@@ -196,19 +191,6 @@ extension TracksExtension on DatabaseService {
       orderBy: 'title ASC',
     );
 
-    return maps.map((map) => {
-      'title': map['title'] as String,
-      'artist': map['artist'] as String?,
-      'album': map['album'] as String?,
-      'duration': map['duration'] as int,
-      'key': map['track_key'] as String,
-      'thumb': map['thumb'] as String?,
-      'year': map['year'] as int?,
-      'addedAt': map['added_at'] as int?,
-      'serverId': map['server_id'] as String,
-      'libraryKey': map['library_key'] as String,
-      'Media': _parseMediaData(map['media_data'] as String),
-      'userRating': map['user_rating'] as double?,
-    }).toList();
+    return maps.map((map) => _mapTrackFromDb(map)).toList();
   }
 }

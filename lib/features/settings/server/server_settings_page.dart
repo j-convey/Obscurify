@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:apollo/core/services/plex_auth_service.dart';
+import 'package:apollo/core/services/plex/plex_services.dart';
 import 'package:apollo/core/services/storage_service.dart';
 import '../../../core/database/database_service.dart';
 
@@ -12,6 +12,8 @@ class ServerSettingsPage extends StatefulWidget {
 
 class _ServerSettingsPageState extends State<ServerSettingsPage> {
   final PlexAuthService _authService = PlexAuthService();
+  final PlexServerService _serverService = PlexServerService();
+  final PlexLibraryService _libraryService = PlexLibraryService();
   final StorageService _storageService = StorageService();
   final DatabaseService _dbService = DatabaseService();
   bool _isAuthenticated = false;
@@ -19,7 +21,7 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
   bool _isLoadingServers = false;
   bool _isSyncing = false;
   String? _username;
-  List<Map<String, dynamic>> _servers = [];
+  List<PlexServer> _servers = [];
   Map<String, List<Map<String, dynamic>>> _serverLibraries = {};
   Map<String, Set<String>> _selectedLibraries = {};
   Map<String, dynamic>? _syncStatus;
@@ -102,26 +104,24 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
       
       // Sync tracks from all selected libraries
       for (var server in _servers) {
-        final machineIdentifier = server['clientIdentifier'] as String;
-        final libraryKeys = selectedServers[machineIdentifier];
+        final libraryKeys = selectedServers[server.machineIdentifier];
         
         if (libraryKeys != null && libraryKeys.isNotEmpty) {
-          final connections = server['connections'] as List<dynamic>;
-          final serverUrl = _authService.getBestConnectionUrl(connections);
+          final serverUrl = _serverService.getBestConnectionUrlForServer(server);
           
           if (serverUrl != null) {
             for (var libraryKey in libraryKeys) {
-              print('Syncing library $libraryKey from server $machineIdentifier...');
+              print('Syncing library $libraryKey from server ${server.machineIdentifier}...');
               
-              final tracks = await _authService.getTracks(token, serverUrl, libraryKey);
+              final tracks = await _libraryService.getTracks(token, serverUrl, libraryKey);
               
               // Add serverId to each track
               final tracksWithServerId = tracks.map((track) {
-                track['serverId'] = machineIdentifier;
+                track['serverId'] = server.machineIdentifier;
                 return track;
               }).toList();
               
-              await _dbService.saveTracks(machineIdentifier, libraryKey, tracksWithServerId);
+              await _dbService.saveTracks(server.machineIdentifier, libraryKey, tracksWithServerId);
               totalTracks += tracks.length;
               
               print('Synced ${tracks.length} tracks from library $libraryKey');
@@ -169,7 +169,7 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
 
     try {
       // Get servers
-      _servers = await _authService.getServers(token);
+      _servers = await _serverService.getServers(token);
       
       // Load saved selections
       final savedSelections = await _storageService.getSelectedServers();
@@ -180,19 +180,18 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
       // Get libraries for all servers in parallel
       final libraryFutures = _servers.map((server) async {
         if (!mounted) return MapEntry('', <Map<String, dynamic>>[]);
-        final connections = server['connections'] as List<dynamic>;
-        final serverUrl = _authService.getBestConnectionUrl(connections);
+        final serverUrl = _serverService.getBestConnectionUrlForServer(server);
         
         if (serverUrl != null) {
           try {
-            final libraries = await _authService.getLibraries(token, serverUrl);
-            return MapEntry(server['clientIdentifier'] as String, libraries);
+            final libraries = await _libraryService.getLibraries(token, serverUrl);
+            return MapEntry(server.machineIdentifier, libraries.map((l) => l.toJson()).toList());
           } catch (e) {
             // Error fetching libraries - return empty list
-            return MapEntry(server['clientIdentifier'] as String, <Map<String, dynamic>>[]);
+            return MapEntry(server.machineIdentifier, <Map<String, dynamic>>[]);
           }
         }
-        return MapEntry(server['clientIdentifier'] as String, <Map<String, dynamic>>[]);
+        return MapEntry('', <Map<String, dynamic>>[]);
       }).toList();
 
       final libraryResults = await Future.wait(libraryFutures);
@@ -248,13 +247,10 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
     final Map<String, String> urlMap = {};
     
     for (var server in _servers) {
-      final machineIdentifier = server['clientIdentifier'] as String;
-      final connections = server['connections'] as List<dynamic>;
-      final serverUrl = _authService.getBestConnectionUrl(connections);
-      
+      final serverUrl = _serverService.getBestConnectionUrlForServer(server);
       if (serverUrl != null) {
-        urlMap[machineIdentifier] = serverUrl;
-        debugPrint('Saving server URL: $machineIdentifier -> $serverUrl');
+        urlMap[server.machineIdentifier] = serverUrl;
+        debugPrint('Saving server URL: ${server.machineIdentifier} -> $serverUrl');
       }
     }
     
@@ -577,8 +573,8 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
                           ),
                           const SizedBox(height: 16),
                           ..._servers.map((server) {
-                            final serverId = server['clientIdentifier'] as String;
-                            final serverName = server['name'] as String;
+                            final serverId = server.machineIdentifier;
+                            final serverName = server.name;
                             final libraries = _serverLibraries[serverId] ?? [];
                             
                             return Card(

@@ -86,7 +86,8 @@ class PlexLibraryService {
       debugPrint('Server URL: $serverUrl');
       debugPrint('Library Key: $libraryKey');
 
-      final url = '$serverUrl/library/sections/$libraryKey/all?type=10';
+      // Request with includeDetails to get full metadata including artist/album info
+      final url = '$serverUrl/library/sections/$libraryKey/all?type=10&includeExternalMedia=1';
 
       final response = await _apiClient.getWithTimeout(
         url,
@@ -124,19 +125,35 @@ class PlexLibraryService {
   /// Maps raw track data to a standardized format.
   List<Map<String, dynamic>> _mapTracks(List<dynamic> tracks) {
     return tracks
-        .map((track) => {
-              'title': track['title'] as String? ?? 'Unknown',
-              'artist': track['originalTitle'] as String? ??
-                  track['grandparentTitle'] as String? ??
-                  'Unknown Artist',
-              'album': track['parentTitle'] as String? ?? 'Unknown Album',
-              'duration': track['duration'] as int? ?? 0,
-              'key': track['key'] as String? ?? '',
-              'thumb': track['thumb'] as String? ?? '',
-              'year': track['year'] as int? ?? 0,
-              'addedAt': track['addedAt'] as int?,
-              'Media': track['Media'] as List<dynamic>? ?? [],
-            })
+        .map((track) {
+          final grandparentRatingKey = track['grandparentRatingKey'];
+          final grandparentTitle = track['grandparentTitle'];
+          
+          if (grandparentRatingKey == null) {
+            debugPrint('WARNING: Track has no grandparentRatingKey - ${track['title']}');
+          }
+          
+          return {
+            'title': track['title'] as String? ?? 'Unknown',
+            'artist': track['originalTitle'] as String? ??
+                track['grandparentTitle'] as String? ??
+                'Unknown Artist',
+            'album': track['parentTitle'] as String? ?? 'Unknown Album',
+            'duration': track['duration'] as int? ?? 0,
+            'key': track['key'] as String? ?? '',
+            'thumb': track['thumb'] as String? ?? '',
+            'year': track['year'] as int? ?? 0,
+            'addedAt': track['addedAt'] as int?,
+            'Media': track['Media'] as List<dynamic>? ?? [],
+            'grandparentRatingKey': grandparentRatingKey,
+            'grandparentTitle': grandparentTitle,
+            'grandparentThumb': track['grandparentThumb'],
+            'grandparentArt': track['grandparentArt'],
+            'parentTitle': track['parentTitle'],
+            'parentThumb': track['parentThumb'],
+            'ratingKey': track['ratingKey'],
+          };
+        })
         .toList();
   }
 }
