@@ -6,7 +6,6 @@ import '../../../core/database/database_service.dart';
 import 'widgets/songs_header.dart';
 import 'widgets/songs_action_buttons.dart';
 import 'widgets/songs_sticky_header_delegate.dart';
-import 'widgets/songs_sticky_header_content.dart';
 import 'widgets/songs_scrollbar.dart';
 import 'widgets/track_list_item.dart';
 import 'utils/songs_utils.dart';
@@ -33,12 +32,11 @@ class _SongsPageState extends State<SongsPage> {
   String? _currentToken;
   String? _currentServerUrl;
   Map<String, String> _serverUrls = {};
-  bool _showStickyPlayButton = false;
+  double _scrollOffset = 0.0;
   
-  // Height of header + action buttons before the sticky header
-  static const double _headerHeight = 280; // SongsHeader
-  static const double _actionButtonsHeight = 104; // SongsActionButtons
-  static const double _scrollThreshold = _headerHeight + _actionButtonsHeight;
+  // Fade animation for sticky header play button
+  static const double _fadeStartOffset = 250.0; // Stay invisible until close to the sorting section
+  static const double _fadeEndOffset = 384.0; // Rapidly fade to fully visible by the sorting section (header 280 + action buttons 104)
   
   // Sorting state
   String _sortColumn = 'addedAt';
@@ -59,18 +57,10 @@ class _SongsPageState extends State<SongsPage> {
   }
 
   void _onScroll() {
-    // Only update state when crossing the threshold to minimize rebuilds
-    final offset = _scrollController.offset;
-    final shouldShow = offset > _scrollThreshold;
-    
-    if (shouldShow != _showStickyPlayButton) {
-      // Schedule state update for next frame to batch multiple scroll events
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && shouldShow != _showStickyPlayButton) {
-          setState(() {
-            _showStickyPlayButton = shouldShow;
-          });
-        }
+    // Update scroll offset for opacity calculation
+    if (mounted) {
+      setState(() {
+        _scrollOffset = _scrollController.offset;
       });
     }
   }
@@ -219,66 +209,136 @@ class _SongsPageState extends State<SongsPage> {
       );
     }
 
-    return SongsScrollbar(
-      scrollController: _scrollController,
-      child: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          SliverToBoxAdapter(
-            child: SongsHeader(trackCount: _tracks.length),
-          ),
-        SliverToBoxAdapter(
-          child: SongsActionButtons(
-            tracks: _tracks,
-            audioPlayerService: widget.audioPlayerService,
-            currentToken: _currentToken,
-            serverUrls: _serverUrls,
-            currentServerUrl: _currentServerUrl,
+    // Calculate opacity for the top play button
+    double playButtonOpacity = 0.0;
+    final range = _fadeEndOffset - _fadeStartOffset;
+    if (range > 0) {
+      if (_scrollOffset >= _fadeEndOffset) {
+        playButtonOpacity = 1.0;
+      } else if (_scrollOffset > _fadeStartOffset) {
+        playButtonOpacity = ((_scrollOffset - _fadeStartOffset) / range).clamp(0.0, 1.0);
+      }
+    }
+
+    return Stack(
+      children: [
+        SongsScrollbar(
+          scrollController: _scrollController,
+          child: CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              SliverToBoxAdapter(
+                child: SongsHeader(trackCount: _tracks.length),
+              ),
+              SliverToBoxAdapter(
+                child: SongsActionButtons(
+                  tracks: _tracks,
+                  audioPlayerService: widget.audioPlayerService,
+                  currentToken: _currentToken,
+                  serverUrls: _serverUrls,
+                  currentServerUrl: _currentServerUrl,
+                ),
+              ),
+              // Sticky header with column headers only
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: SongsStickyHeaderDelegate(
+                  minHeight: 48 + (playButtonOpacity > 0 ? 64 : 0),
+                  maxHeight: 48 + (playButtonOpacity > 0 ? 64 : 0),
+                  sortColumn: _sortColumn,
+                  sortAscending: _sortAscending,
+                  onSort: _sortTracks,
+                  topPadding: playButtonOpacity > 0 ? 64.0 : 0.0,
+                ),
+              ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final track = _tracks[index];
+                    return TrackListItem(
+                      tracks: _tracks,
+                      track: track,
+                      index: index,
+                      isHovered: _hoveredIndex == index,
+                      onHoverEnter: () => setState(() => _hoveredIndex = index),
+                      onHoverExit: () => setState(() => _hoveredIndex = null),
+                      currentToken: _currentToken,
+                      serverUrls: _serverUrls,
+                      currentServerUrl: _currentServerUrl,
+                      audioPlayerService: widget.audioPlayerService,
+                      formatDuration: SongsUtils.formatDuration,
+                      formatDate: SongsUtils.formatDate,
+                    );
+                  },
+                  childCount: _tracks.length,
+                ),
+              ),
+            ],
           ),
         ),
-        // Sticky header with play button and column headers
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: SongsStickyHeaderDelegate(
-            minHeight: 104,
-            maxHeight: 104,
-            child: SongsStickyHeaderContent(
-              sortColumn: _sortColumn,
-              sortAscending: _sortAscending,
-              onSort: _sortTracks,
-              tracks: _tracks,
-              audioPlayerService: widget.audioPlayerService,
-              currentToken: _currentToken,
-              serverUrls: _serverUrls,
-              currentServerUrl: _currentServerUrl,
-              showPlayButton: _showStickyPlayButton,
+        // Overlay play button at the very top that fades in
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: IgnorePointer(
+            ignoring: playButtonOpacity < 0.1,
+            child: Opacity(
+              opacity: playButtonOpacity,
+              child: Container(
+                color: const Color(0xFF121212),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1DB954),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.play_arrow, size: 24),
+                        color: Colors.black,
+                        padding: EdgeInsets.zero,
+                        onPressed: () {
+                          if (_tracks.isNotEmpty &&
+                              widget.audioPlayerService != null &&
+                              _currentToken != null) {
+                            final track = _tracks[0];
+                            final serverId = track['serverId'] as String?;
+                            final serverUrl = serverId != null
+                                ? _serverUrls[serverId]
+                                : _currentServerUrl;
+
+                            if (serverUrl != null) {
+                              widget.audioPlayerService!.setPlayQueue(_tracks, 0);
+                              widget.audioPlayerService!.playTrack(
+                                track,
+                                _currentToken!,
+                                serverUrl,
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Text(
+                      'Library',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-        SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final track = _tracks[index];
-              return TrackListItem(
-                tracks: _tracks,
-                track: track,
-                index: index,
-                isHovered: _hoveredIndex == index,
-                onHoverEnter: () => setState(() => _hoveredIndex = index),
-                onHoverExit: () => setState(() => _hoveredIndex = null),
-                currentToken: _currentToken,
-                serverUrls: _serverUrls,
-                currentServerUrl: _currentServerUrl,
-                audioPlayerService: widget.audioPlayerService,
-                formatDuration: SongsUtils.formatDuration,
-                formatDate: SongsUtils.formatDate,
-              );
-            },
-            childCount: _tracks.length,
-          ),
-        ),
       ],
-      ),
     );
   }
 }

@@ -1,65 +1,24 @@
 import 'package:flutter/material.dart';
-import '../../../core/services/audio_player_service.dart';
-import 'sticky_play_button.dart';
 
 /// The sticky header content that stays visible when scrolling.
-/// Contains the play button and column headers.
+/// Contains only the column headers.
 class SongsStickyHeaderContent extends StatelessWidget {
   final String sortColumn;
   final bool sortAscending;
   final Function(String) onSort;
-  final List<Map<String, dynamic>> tracks;
-  final AudioPlayerService? audioPlayerService;
-  final String? currentToken;
-  final Map<String, String> serverUrls;
-  final String? currentServerUrl;
-  final bool showPlayButton;
 
   const SongsStickyHeaderContent({
     super.key,
     required this.sortColumn,
     required this.sortAscending,
     required this.onSort,
-    required this.tracks,
-    required this.audioPlayerService,
-    required this.currentToken,
-    required this.serverUrls,
-    required this.currentServerUrl,
-    this.showPlayButton = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: const Color(0xFF121212),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildPlayButtonRow(),
-          _buildColumnHeaders(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlayButtonRow() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: Row(
-        children: [
-          AnimatedOpacity(
-            opacity: showPlayButton ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 200),
-            child: StickyPlayButton(
-              tracks: tracks,
-              audioPlayerService: audioPlayerService,
-              currentToken: currentToken,
-              serverUrls: serverUrls,
-              currentServerUrl: currentServerUrl,
-            ),
-          ),
-        ],
-      ),
+      child: _buildColumnHeaders(),
     );
   }
 
