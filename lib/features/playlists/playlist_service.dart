@@ -10,10 +10,10 @@ class PlaylistService {
   final DatabaseService _dbService = DatabaseService();
 
   /// Fetches playlists from Plex API and syncs them to the local database.
-  Future<List<Playlist>> syncPlaylists(String serverUrl, String token) async {
+  Future<List<Playlist>> syncPlaylists(String serverUrl, String token, String serverId) async {
     try {
       final playlists = await _fetchPlaylistsFromApi(serverUrl, token);
-      await _savePlaylistsToDb(playlists);
+      await _savePlaylistsToDb(playlists, serverId);
       return playlists;
     } catch (e) {
       debugPrint('PLAYLIST SERVICE: Error syncing playlists: $e');
@@ -112,8 +112,8 @@ class PlaylistService {
   }
 
   /// Saves playlists to the local database.
-  Future<void> _savePlaylistsToDb(List<Playlist> playlists) async {
+  Future<void> _savePlaylistsToDb(List<Playlist> playlists, String serverId) async {
     final playlistMaps = playlists.map((p) => p.toMap()).toList();
-    await _dbService.savePlaylists(playlistMaps);
+    await _dbService.savePlaylists(playlistMaps, serverId);
   }
 }

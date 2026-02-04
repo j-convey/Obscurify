@@ -51,7 +51,7 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
 
       _token = token;
 
-      // Get the stored server URL for the selected server
+      // Get the stored server URL and ID for the selected server
       final serverUrl = await _storageService.getSelectedServerUrl();
       
       debugPrint('PLAYLISTS PAGE: Server URL from storage: $serverUrl');
@@ -63,10 +63,26 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
 
       _serverUrl = serverUrl;
 
-      debugPrint('PLAYLISTS PAGE: Syncing playlists from server');
+      // Get the serverId from the selected servers map
+      final selectedServers = await _storageService.getSelectedServers();
+      String? serverId;
+      for (var entry in selectedServers.entries) {
+        if (entry.value.isNotEmpty) {
+          serverId = entry.key;
+          break;
+        }
+      }
+
+      if (serverId == null) {
+        await _loadLocalPlaylists('No server ID found');
+        return;
+      }
+
+      debugPrint('PLAYLISTS PAGE: Syncing playlists from server $serverId');
       final playlists = await _playlistService.syncPlaylists(
         _serverUrl!,
         _token!,
+        serverId,
       );
       debugPrint('PLAYLISTS PAGE: Synced ${playlists.length} playlists');
       

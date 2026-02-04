@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/audio_player_service.dart';
+import '../../album/album_page.dart';
 
 /// A single track list item for collection pages.
 /// Displays track info and handles play interactions.
-class CollectionTrackListItem extends StatelessWidget {
+class CollectionTrackListItem extends StatefulWidget {
   final List<Map<String, dynamic>> tracks;
   final Map<String, dynamic> track;
   final int index;
@@ -34,28 +35,35 @@ class CollectionTrackListItem extends StatelessWidget {
   });
 
   @override
+  State<CollectionTrackListItem> createState() => _CollectionTrackListItemState();
+}
+
+class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
+  bool _isAlbumHovered = false;
+
+  @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => onHoverEnter(),
-      onExit: (_) => onHoverExit(),
+      onEnter: (_) => widget.onHoverEnter(),
+      onExit: (_) => widget.onHoverExit(),
       child: InkWell(
         onTap: () => _onTrackTapped(),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          color: isHovered ? Colors.grey[900] : Colors.transparent,
+          color: widget.isHovered ? Colors.grey[900] : Colors.transparent,
           child: Row(
             children: [
               // # or play button
               SizedBox(
                 width: 40,
-                child: isHovered
+                child: widget.isHovered
                     ? const Icon(
                         Icons.play_arrow,
                         color: Colors.white,
                         size: 20,
                       )
                     : Text(
-                        '${index + 1}',
+                        '${widget.index + 1}',
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 14,
@@ -75,7 +83,7 @@ class CollectionTrackListItem extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            track['title'] as String,
+                            widget.track['title'] as String,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -84,7 +92,7 @@ class CollectionTrackListItem extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            track['artist'] as String,
+                            widget.track['artist'] as String,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -101,21 +109,13 @@ class CollectionTrackListItem extends StatelessWidget {
               // Album
               Expanded(
                 flex: 2,
-                child: Text(
-                  track['album'] as String,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 14,
-                  ),
-                ),
+                child: _buildAlbumLink(context),
               ),
               // Date added
               Expanded(
                 flex: 1,
                 child: Text(
-                  formatDate(track['addedAt'] as int?),
+                  widget.formatDate(widget.track['addedAt'] as int?),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -130,7 +130,7 @@ class CollectionTrackListItem extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    if (isHovered) ...[
+                    if (widget.isHovered) ...[
                       IconButton(
                         icon: const Icon(Icons.favorite_border, size: 18),
                         color: Colors.grey[400],
@@ -143,13 +143,13 @@ class CollectionTrackListItem extends StatelessWidget {
                       const SizedBox(width: 12),
                     ],
                     Text(
-                      formatDuration(track['duration'] as int),
+                      widget.formatDuration(widget.track['duration'] as int),
                       style: TextStyle(
                         color: Colors.grey[400],
                         fontSize: 14,
                       ),
                     ),
-                    if (isHovered) ...[
+                    if (widget.isHovered) ...[
                       const SizedBox(width: 12),
                       IconButton(
                         icon: const Icon(Icons.more_horiz, size: 20),
@@ -172,13 +172,13 @@ class CollectionTrackListItem extends StatelessWidget {
   }
 
   void _onTrackTapped() {
-    debugPrint('TRACK_ITEM: ===== Track tapped: ${track['title']} =====');
-    if (audioPlayerService != null && currentToken != null) {
+    debugPrint('TRACK_ITEM: ===== Track tapped: ${widget.track['title']} =====');
+    if (widget.audioPlayerService != null && widget.currentToken != null) {
       // Get the correct server URL based on the track's serverId
-      final trackServerId = track['serverId'] as String?;
-      final trackServerUrl = trackServerId != null && serverUrls.containsKey(trackServerId)
-          ? serverUrls[trackServerId]!
-          : currentServerUrl;
+      final trackServerId = widget.track['serverId'] as String?;
+      final trackServerUrl = trackServerId != null && widget.serverUrls.containsKey(trackServerId)
+          ? widget.serverUrls[trackServerId]!
+          : widget.currentServerUrl;
 
       if (trackServerUrl == null) {
         debugPrint('TRACK_ITEM: ERROR - No server URL found for track (serverId: $trackServerId)');
@@ -187,24 +187,24 @@ class CollectionTrackListItem extends StatelessWidget {
 
       debugPrint('TRACK_ITEM: Track serverId: $trackServerId');
       debugPrint('TRACK_ITEM: Using server URL: $trackServerUrl');
-      debugPrint('TRACK_ITEM: Calling setPlayQueue with ${tracks.length} tracks, index $index');
+      debugPrint('TRACK_ITEM: Calling setPlayQueue with ${widget.tracks.length} tracks, index ${widget.index}');
 
       final startTime = DateTime.now();
-      audioPlayerService!.setPlayQueue(tracks, index);
+      widget.audioPlayerService!.setPlayQueue(widget.tracks, widget.index);
       final endTime = DateTime.now();
       debugPrint('TRACK_ITEM: setPlayQueue took ${endTime.difference(startTime).inMilliseconds}ms');
 
       debugPrint('TRACK_ITEM: Calling playTrack');
       final playStartTime = DateTime.now();
-      audioPlayerService!.playTrack(
-        track,
-        currentToken!,
+      widget.audioPlayerService!.playTrack(
+        widget.track,
+        widget.currentToken!,
         trackServerUrl,
       );
       final playEndTime = DateTime.now();
       debugPrint('TRACK_ITEM: playTrack call returned in ${playEndTime.difference(playStartTime).inMilliseconds}ms');
     } else {
-      debugPrint('TRACK_ITEM: Missing required data - service: ${audioPlayerService != null}, token: ${currentToken != null}');
+      debugPrint('TRACK_ITEM: Missing required data - service: ${widget.audioPlayerService != null}, token: ${widget.currentToken != null}');
     }
   }
 
@@ -216,13 +216,13 @@ class CollectionTrackListItem extends StatelessWidget {
         color: Colors.grey[800],
         borderRadius: BorderRadius.circular(4),
       ),
-      child: track['thumb'] != null && currentToken != null
+      child: widget.track['thumb'] != null && widget.currentToken != null
           ? ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: Builder(
                 builder: (context) {
-                  final serverId = track['serverId'] as String?;
-                  final serverUrl = serverId != null ? serverUrls[serverId] : currentServerUrl;
+                  final serverId = widget.track['serverId'] as String?;
+                  final serverUrl = serverId != null ? widget.serverUrls[serverId] : widget.currentServerUrl;
 
                   if (serverUrl == null) {
                     return const Icon(
@@ -233,7 +233,7 @@ class CollectionTrackListItem extends StatelessWidget {
                   }
 
                   return Image.network(
-                    '$serverUrl${track['thumb']}?X-Plex-Token=$currentToken',
+                    '$serverUrl${widget.track['thumb']}?X-Plex-Token=${widget.currentToken}',
                     width: 40,
                     height: 40,
                     fit: BoxFit.cover,
@@ -253,6 +253,60 @@ class CollectionTrackListItem extends StatelessWidget {
               color: Colors.grey,
               size: 20,
             ),
+    );
+  }
+
+  Widget _buildAlbumLink(BuildContext context) {
+    final albumId = widget.track['parentRatingKey'] as String?;
+    final albumTitle = widget.track['album'] as String;
+    
+    if (albumId == null) {
+      // No album link available
+      return Text(
+        albumTitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: Colors.grey[400],
+          fontSize: 14,
+        ),
+      );
+    }
+    
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isAlbumHovered = true),
+      onExit: (_) => setState(() => _isAlbumHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _navigateToAlbum(context, albumId, albumTitle),
+        child: Text(
+          albumTitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: _isAlbumHovered ? Colors.white : Colors.grey[400],
+            fontSize: 14,
+            decoration: _isAlbumHovered ? TextDecoration.underline : null,
+            decorationColor: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _navigateToAlbum(BuildContext context, String albumId, String albumTitle) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AlbumPage(
+          title: albumTitle,
+          subtitle: '$albumTitle • Album',
+          albumType: AlbumType.album,
+          audioPlayerService: widget.audioPlayerService,
+          currentToken: widget.currentToken,
+          serverUrls: widget.serverUrls,
+          currentServerUrl: widget.currentServerUrl,
+        ),
+      ),
     );
   }
 }
