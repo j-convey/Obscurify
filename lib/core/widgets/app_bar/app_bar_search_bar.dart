@@ -223,7 +223,8 @@ class _AppBarSearchBarState extends State<AppBarSearchBar> {
       link: _layerLink,
       child: Container(
         height: 48,
-        constraints: const BoxConstraints(maxWidth: 364),
+        // Keep the search bar compact but usable; parent already constrains overall width
+        constraints: const BoxConstraints(minWidth: 180, maxWidth: 455),
         decoration: BoxDecoration(
           color: const Color(0xFF242424),
           borderRadius: BorderRadius.circular(24),

@@ -60,62 +60,83 @@ class ApolloAppBar extends StatelessWidget implements PreferredSizeWidget {
         decoration: const BoxDecoration(
           color: Colors.black,
         ),
-        child: Row(
+        child: Stack(
           children: [
-            // Navigation arrows
-            NavigationButtons(
-              onBackPressed: onBackPressed,
-              onForwardPressed: onForwardPressed,
-              canGoBack: canGoBack,
-              canGoForward: canGoForward,
-            ),
-            const SizedBox(width: 16),
-            
-            // Home button
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.grey[900],
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.home, size: 24),
-                color: Colors.white,
-                onPressed: onHomeTap,
-                tooltip: 'Home',
-              ),
-            ),
-            const SizedBox(width: 16),
-            
-            // Search bar (centered)
-            Expanded(
-              child: Center(
-                child: AppBarSearchBar(
-                  audioPlayerService: audioPlayerService,
-                  currentToken: currentToken,
-                  currentServerUrl: currentServerUrl,
-                ),
+            // Left side controls
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Row(
+                children: [
+                  // Navigation arrows
+                  NavigationButtons(
+                    onBackPressed: onBackPressed,
+                    onForwardPressed: onForwardPressed,
+                    canGoBack: canGoBack,
+                    canGoForward: canGoForward,
+                  ),
+                ],
               ),
             ),
             
-            const SizedBox(width: 16),
-            
-            // Action buttons
-            AppBarActions(
-              onNotificationsTap: onNotificationsTap,
-              onAccountTap: onAccountTap,
-              onProfileTap: onProfileTap,
-              onSupportTap: onSupportTap,
-              onPrivateSessionTap: onPrivateSessionTap,
-              onSettingsTap: onSettingsTap,
-              onLogoutTap: onLogoutTap,
+            // Center: Search bar with home button adjacent to its left
+            Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.home, size: 24),
+                      color: Colors.white,
+                      onPressed: onHomeTap,
+                      tooltip: 'Home',
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 455),
+                    child: AppBarSearchBar(
+                      audioPlayerService: audioPlayerService,
+                      currentToken: currentToken,
+                      currentServerUrl: currentServerUrl,
+                    ),
+                  ),
+                ],
+              ),
             ),
             
-            const SizedBox(width: 8),
-            
-            // Window controls
-            const WindowControls(),
+            // Right side controls
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: Row(
+                children: [
+                  // Action buttons
+                  AppBarActions(
+                    onNotificationsTap: onNotificationsTap,
+                    onAccountTap: onAccountTap,
+                    onProfileTap: onProfileTap,
+                    onSupportTap: onSupportTap,
+                    onPrivateSessionTap: onPrivateSessionTap,
+                    onSettingsTap: onSettingsTap,
+                    onLogoutTap: onLogoutTap,
+                  ),
+                  
+                  const SizedBox(width: 8),
+                  
+                  // Window controls
+                  const WindowControls(),
+                ],
+              ),
+            ),
           ],
         ),
       ),
