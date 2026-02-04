@@ -128,9 +128,13 @@ class PlexLibraryService {
         .map((track) {
           final grandparentRatingKey = track['grandparentRatingKey'];
           final grandparentTitle = track['grandparentTitle'];
+          final parentRatingKey = track['parentRatingKey'];
           
           if (grandparentRatingKey == null) {
             debugPrint('WARNING: Track has no grandparentRatingKey - ${track['title']}');
+          }
+          if (parentRatingKey == null) {
+            debugPrint('WARNING: Track has no parentRatingKey - ${track['title']}');
           }
           
           return {
@@ -149,6 +153,7 @@ class PlexLibraryService {
             'grandparentTitle': grandparentTitle,
             'grandparentThumb': track['grandparentThumb'],
             'grandparentArt': track['grandparentArt'],
+            'parentRatingKey': parentRatingKey,
             'parentTitle': track['parentTitle'],
             'parentThumb': track['parentThumb'],
             'ratingKey': track['ratingKey'],

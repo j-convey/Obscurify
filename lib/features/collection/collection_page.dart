@@ -49,6 +49,18 @@ class CollectionPage extends StatefulWidget {
   /// Error message to show when no tracks are available
   final String? emptyMessage;
 
+  /// Navigation callback for album pages
+  final void Function(Widget)? onNavigate;
+
+  /// Home button callback
+  final VoidCallback? onHomeTap;
+
+  /// Settings button callback
+  final VoidCallback? onSettingsTap;
+
+  /// Profile button callback
+  final VoidCallback? onProfileTap;
+
   const CollectionPage({
     super.key,
     required this.title,
@@ -64,6 +76,10 @@ class CollectionPage extends StatefulWidget {
     this.serverUrls,
     this.currentServerUrl,
     this.emptyMessage,
+    this.onNavigate,
+    this.onHomeTap,
+    this.onSettingsTap,
+    this.onProfileTap,
   });
 
   @override
@@ -119,16 +135,28 @@ class _CollectionPageState extends State<CollectionPage> {
   }
 
   Future<void> _initializeTracks() async {
+    debugPrint('[COLLECTION] ===== _initializeTracks START =====');
+    debugPrint('[COLLECTION] tracks provided: ${widget.tracks != null ? widget.tracks!.length : 'null'}');
+    debugPrint('[COLLECTION] onLoadTracks provided: ${widget.onLoadTracks != null}');
+    debugPrint('[COLLECTION] collectionType: ${widget.collectionType}');
+    
+    if (widget.tracks != null && widget.tracks!.isNotEmpty) {
+      debugPrint('[COLLECTION] First track album: ${widget.tracks![0]['album']}');
+    }
+    
     if (widget.tracks != null) {
       // Use provided tracks directly
+      debugPrint('[COLLECTION] Using provided tracks: ${widget.tracks!.length} tracks');
       setState(() {
         _tracks = List.from(widget.tracks!);
         _isLoading = false;
       });
     } else if (widget.onLoadTracks != null) {
       // Load tracks using callback
+      debugPrint('[COLLECTION] Calling onLoadTracks callback...');
       await _loadTracks();
     } else {
+      debugPrint('[COLLECTION] No tracks or loader provided');
       setState(() {
         _error = widget.emptyMessage ?? 'No tracks available.';
         _isLoading = false;
@@ -137,6 +165,7 @@ class _CollectionPageState extends State<CollectionPage> {
   }
 
   Future<void> _loadTracks() async {
+    debugPrint('[COLLECTION] ===== _loadTracks START =====');
     setState(() {
       _isLoading = true;
       _error = null;
@@ -144,15 +173,19 @@ class _CollectionPageState extends State<CollectionPage> {
 
     try {
       if (widget.onLoadTracks != null) {
+        debugPrint('[COLLECTION] Awaiting onLoadTracks callback...');
         final loadedTracks = await widget.onLoadTracks!();
+        debugPrint('[COLLECTION] onLoadTracks returned ${loadedTracks.length} tracks');
         if (mounted) {
           setState(() {
             _tracks = loadedTracks;
             _isLoading = false;
           });
+          debugPrint('[COLLECTION] Loaded ${_tracks.length} tracks into state');
         }
       }
     } catch (e) {
+      debugPrint('[COLLECTION] ERROR loading tracks: $e');
       if (mounted) {
         setState(() {
           _error = 'Error loading tracks: $e';
@@ -319,6 +352,10 @@ class _CollectionPageState extends State<CollectionPage> {
                       audioPlayerService: widget.audioPlayerService,
                       formatDuration: CollectionUtils.formatDuration,
                       formatDate: CollectionUtils.formatDate,
+                      onNavigate: widget.onNavigate,
+                      onHomeTap: widget.onHomeTap,
+                      onSettingsTap: widget.onSettingsTap,
+                      onProfileTap: widget.onProfileTap,
                     );
                   },
                   childCount: _tracks.length,

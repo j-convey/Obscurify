@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/audio_player_service.dart';
+import '../../../core/database/database_service.dart';
 import '../../album/album_page.dart';
 
 /// A single track list item for collection pages.
@@ -17,6 +18,10 @@ class CollectionTrackListItem extends StatefulWidget {
   final AudioPlayerService? audioPlayerService;
   final String Function(int) formatDuration;
   final String Function(int?) formatDate;
+  final void Function(Widget)? onNavigate;
+  final VoidCallback? onHomeTap;
+  final VoidCallback? onSettingsTap;
+  final VoidCallback? onProfileTap;
 
   const CollectionTrackListItem({
     super.key,
@@ -32,6 +37,10 @@ class CollectionTrackListItem extends StatefulWidget {
     required this.audioPlayerService,
     required this.formatDuration,
     required this.formatDate,
+    this.onNavigate,
+    this.onHomeTap,
+    this.onSettingsTap,
+    this.onProfileTap,
   });
 
   @override
@@ -40,6 +49,7 @@ class CollectionTrackListItem extends StatefulWidget {
 
 class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
   bool _isAlbumHovered = false;
+  final DatabaseService _dbService = DatabaseService();
 
   @override
   Widget build(BuildContext context) {
@@ -295,18 +305,56 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
   }
 
   void _navigateToAlbum(BuildContext context, String albumId, String albumTitle) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => AlbumPage(
-          title: albumTitle,
-          subtitle: '$albumTitle • Album',
-          albumType: AlbumType.album,
-          audioPlayerService: widget.audioPlayerService,
-          currentToken: widget.currentToken,
-          serverUrls: widget.serverUrls,
-          currentServerUrl: widget.currentServerUrl,
-        ),
-      ),
+    debugPrint('ALBUM_NAV: ===== Navigating to album =====');
+    debugPrint('ALBUM_NAV: albumId: $albumId');
+    debugPrint('ALBUM_NAV: albumTitle: $albumTitle');
+    debugPrint('ALBUM_NAV: currentToken: ${widget.currentToken}');
+    debugPrint('ALBUM_NAV: currentServerUrl: ${widget.currentServerUrl}');
+    debugPrint('ALBUM_NAV: serverUrls count: ${widget.serverUrls.length}');
+    debugPrint('ALBUM_NAV: Current track: ${widget.track['title']}');
+    debugPrint('ALBUM_NAV: parent_rating_key in track: ${widget.track['parentRatingKey']}');
+    
+    // Get album art from track's parentThumb
+    final albumThumb = widget.track['parentThumb'] as String?;
+    final imageUrl = albumThumb != null && widget.currentServerUrl != null && widget.currentToken != null
+        ? '${widget.currentServerUrl}$albumThumb?X-Plex-Token=${widget.currentToken}'
+        : null;
+    
+    final albumPage = AlbumPage(
+      title: albumTitle,
+      subtitle: '$albumTitle • Album',
+      audioPlayerService: widget.audioPlayerService,
+      imageUrl: imageUrl,
+      currentToken: widget.currentToken,
+      serverUrls: widget.serverUrls,
+      currentServerUrl: widget.currentServerUrl,
+      onNavigate: widget.onNavigate,
+      onHomeTap: widget.onHomeTap,
+      onSettingsTap: widget.onSettingsTap,
+      onProfileTap: widget.onProfileTap,
+      onLoadTracks: () {
+        debugPrint('ALBUM_NAV: onLoadTracks callback called with albumId: $albumId');
+        return _dbService.getTracksForAlbum(albumId).then((tracks) {
+          debugPrint('ALBUM_NAV: getTracksForAlbum returned ${tracks.length} tracks');
+          if (tracks.isEmpty) {
+            debugPrint('ALBUM_NAV: WARNING - No tracks found for album!');
+          }
+          return tracks;
+        }).catchError((error) {
+          debugPrint('ALBUM_NAV: ERROR fetching album tracks: $error');
+          throw error;
+        });
+      },
     );
+
+    // Use onNavigate callback if available (keeps MainScreen's app bar consistent)
+    if (widget.onNavigate != null) {
+      widget.onNavigate!(albumPage);
+    } else {
+      // Fallback to push if no navigation callback
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => albumPage),
+      );
+    }
   }
 }

@@ -1,28 +1,21 @@
 import 'package:flutter/material.dart';
 import '../../core/services/audio_player_service.dart';
-import '../collection/collection_page.dart';
-import '../collection/widgets/collection_header.dart' show CollectionType;
+import 'album_display.dart';
 
 /// Album page that displays an album of tracks.
-/// Uses the reusable CollectionPage component.
+/// Provides the page scaffold and navigation.
 class AlbumPage extends StatelessWidget {
   /// The title of the album
   final String title;
 
-  /// Optional subtitle override. If null, defaults to "$title • $trackCount songs"
+  /// Optional subtitle override
   final String? subtitle;
-
-  /// The type of album being displayed
-  final AlbumType albumType;
 
   /// The audio player service for playback
   final AudioPlayerService? audioPlayerService;
 
   /// The tracks to display
   final List<Map<String, dynamic>>? tracks;
-
-  /// Optional custom cover image widget
-  final Widget? coverImage;
 
   /// Optional cover image URL
   final String? imageUrl;
@@ -42,63 +35,112 @@ class AlbumPage extends StatelessWidget {
   /// Current server URL
   final String? currentServerUrl;
 
-  /// Error message to show when no tracks are available
-  final String? emptyMessage;
+  /// Navigation callback for album pages
+  final void Function(Widget)? onNavigate;
+
+  /// Callback for home button
+  final VoidCallback? onHomeTap;
+
+  /// Callback for settings
+  final VoidCallback? onSettingsTap;
+
+  /// Callback for profile
+  final VoidCallback? onProfileTap;
 
   const AlbumPage({
     super.key,
     required this.title,
     this.subtitle,
-    this.albumType = AlbumType.album,
     this.audioPlayerService,
     this.tracks,
-    this.coverImage,
     this.imageUrl,
     this.gradientColors,
     this.onLoadTracks,
     this.currentToken,
     this.serverUrls,
     this.currentServerUrl,
-    this.emptyMessage,
+    this.onNavigate,
+    this.onHomeTap,
+    this.onSettingsTap,
+    this.onProfileTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return CollectionPage(
-      title: title,
-      subtitle: subtitle,
-      collectionType: _mapAlbumTypeToCollectionType(albumType),
-      audioPlayerService: audioPlayerService,
-      tracks: tracks,
-      coverImage: coverImage,
-      imageUrl: imageUrl,
-      gradientColors: gradientColors,
-      onLoadTracks: onLoadTracks,
-      currentToken: currentToken,
-      serverUrls: serverUrls,
-      currentServerUrl: currentServerUrl,
-      emptyMessage: emptyMessage,
+    return Scaffold(
+      backgroundColor: const Color(0xFF121212),
+      body: FutureBuilder<List<Map<String, dynamic>>?>(
+        future: _loadTracks(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      (context as Element).reassemble();
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final tracksToDisplay = snapshot.data ?? tracks ?? [];
+
+          if (tracksToDisplay.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.music_note, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'No songs in this album',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return AlbumDisplay(
+            title: title,
+            subtitle: subtitle,
+            audioPlayerService: audioPlayerService,
+            tracks: tracksToDisplay,
+            imageUrl: imageUrl,
+            gradientColors: gradientColors,
+            currentToken: currentToken,
+            serverUrls: serverUrls,
+            currentServerUrl: currentServerUrl,
+          );
+        },
+      ),
     );
   }
 
-  CollectionType _mapAlbumTypeToCollectionType(AlbumType type) {
-    switch (type) {
-      case AlbumType.library:
-        return CollectionType.library;
-      case AlbumType.playlist:
-        return CollectionType.playlist;
-      case AlbumType.album:
-        return CollectionType.album;
-      case AlbumType.artist:
-        return CollectionType.artist;
+  Future<List<Map<String, dynamic>>?> _loadTracks() async {
+    if (tracks != null) {
+      return tracks;
     }
+    if (onLoadTracks != null) {
+      return await onLoadTracks!();
+    }
+    return null;
   }
-}
-
-/// Represents the type of album being displayed
-enum AlbumType {
-  library,
-  playlist,
-  album,
-  artist,
 }

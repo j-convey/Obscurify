@@ -10,8 +10,19 @@ import '../collection/widgets/collection_header.dart';
 /// Uses the reusable CollectionPage component.
 class SongsPage extends StatefulWidget {
   final AudioPlayerService? audioPlayerService;
+  final void Function(Widget)? onNavigate;
+  final VoidCallback? onHomeTap;
+  final VoidCallback? onSettingsTap;
+  final VoidCallback? onProfileTap;
   
-  const SongsPage({super.key, this.audioPlayerService});
+  const SongsPage({
+    super.key,
+    this.audioPlayerService,
+    this.onNavigate,
+    this.onHomeTap,
+    this.onSettingsTap,
+    this.onProfileTap,
+  });
 
   @override
   State<SongsPage> createState() => _SongsPageState();
@@ -162,6 +173,10 @@ class _SongsPageState extends State<SongsPage> {
       serverUrls: _serverUrls,
       currentServerUrl: _currentServerUrl,
       emptyMessage: 'No songs in library. Please go to Settings > Server Settings and tap "Sync Library" to download your music library.',
+      onNavigate: widget.onNavigate,
+      onHomeTap: widget.onHomeTap,
+      onSettingsTap: widget.onSettingsTap,
+      onProfileTap: widget.onProfileTap,
     );
   }
 }

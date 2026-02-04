@@ -203,7 +203,7 @@ class _AppBarSearchBarState extends State<AppBarSearchBar> {
               child: artist['artistThumb'] != null
                   ? ClipOval(
                       child: Image.network(
-                        '${_serverUrl}${artist['artistThumb']}?X-Plex-Token=${_token}',
+                        '$_serverUrl${artist['artistThumb']}?X-Plex-Token=$_token',
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return const Icon(Icons.person, color: Colors.grey);

@@ -10,6 +10,9 @@ class HomePage extends StatelessWidget {
   final StorageService? storageService;
   final String? token;
   final String? serverUrl;
+  final VoidCallback? onHomeTap;
+  final VoidCallback? onSettingsTap;
+  final VoidCallback? onProfileTap;
 
   const HomePage({
     super.key,
@@ -18,6 +21,9 @@ class HomePage extends StatelessWidget {
     this.storageService,
     this.token,
     this.serverUrl,
+    this.onHomeTap,
+    this.onSettingsTap,
+    this.onProfileTap,
   });
 
   @override
@@ -47,7 +53,13 @@ class HomePage extends StatelessWidget {
                     color: Colors.purple,
                     onTap: () {
                       if (onNavigate != null) {
-                        onNavigate!(SongsPage(audioPlayerService: audioPlayerService));
+                        onNavigate!(SongsPage(
+                          audioPlayerService: audioPlayerService,
+                          onNavigate: onNavigate,
+                          onHomeTap: onHomeTap,
+                          onSettingsTap: onSettingsTap,
+                          onProfileTap: onProfileTap,
+                        ));
                       }
                     },
                   ),

@@ -42,9 +42,33 @@ class _MainScreenState extends State<MainScreen> {
       storageService: _storageService,
       token: _currentToken,
       serverUrl: _currentServerUrl,
+      onHomeTap: _onHomeTap,
+      onSettingsTap: _onSettingsTap,
+      onProfileTap: _onProfileTap,
     );
     _navigationHistory.add(_currentPage);
     _currentHistoryIndex = 0;
+  }
+
+  void _onHomeTap() {
+    _navigateToPage(HomePage(
+      onNavigate: _navigateToPage,
+      audioPlayerService: _audioPlayerService,
+      storageService: _storageService,
+      token: _currentToken,
+      serverUrl: _currentServerUrl,
+      onHomeTap: _onHomeTap,
+      onSettingsTap: _onSettingsTap,
+      onProfileTap: _onProfileTap,
+    ));
+  }
+
+  void _onSettingsTap() {
+    _navigateToPage(SettingsPage(onNavigate: _navigateToPage));
+  }
+
+  void _onProfileTap() {
+    _navigateToPage(ProfilePage(storageService: _storageService));
   }
 
   Future<void> _loadCredentials() async {
@@ -58,6 +82,9 @@ class _MainScreenState extends State<MainScreen> {
           storageService: _storageService,
           token: _currentToken,
           serverUrl: _currentServerUrl,
+          onHomeTap: _onHomeTap,
+          onSettingsTap: _onSettingsTap,
+          onProfileTap: _onProfileTap,
         );
         _navigationHistory[_currentHistoryIndex] = _currentPage;
       });
@@ -116,15 +143,9 @@ class _MainScreenState extends State<MainScreen> {
             onForwardPressed: _goForward,
             canGoBack: _currentHistoryIndex > 0,
             canGoForward: _currentHistoryIndex < _navigationHistory.length - 1,
-            onHomeTap: () => _navigateToPage(HomePage(
-              onNavigate: _navigateToPage,
-              audioPlayerService: _audioPlayerService,
-              storageService: _storageService,
-              token: _currentToken,
-              serverUrl: _currentServerUrl,
-            )),
-            onProfileTap: () => _navigateToPage(ProfilePage(storageService: _storageService)),
-            onSettingsTap: () => _navigateToPage(SettingsPage(onNavigate: _navigateToPage)),
+            onHomeTap: _onHomeTap,
+            onSettingsTap: _onSettingsTap,
+            onProfileTap: _onProfileTap,
           ),
           Expanded(child: _currentPage),
           PlayerBar(

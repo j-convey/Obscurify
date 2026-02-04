@@ -71,8 +71,50 @@ extension AlbumsExtension on DatabaseService {
   }
 
   /// Get all tracks for an album, ordered by disc and track number
+  /// Tries to find by rating key first, then falls back to album name
   Future<List<Map<String, dynamic>>> getTracksForAlbum(String albumRatingKey) async {
     final db = await database;
+    debugPrint('[DB] getTracksForAlbum called with albumRatingKey: $albumRatingKey');
+    
+    // First, try to find by album rating key (from albums table)
+    final albumCheck = await db.rawQuery(
+      'SELECT id, rating_key, title FROM albums WHERE rating_key = ?',
+      [albumRatingKey]
+    );
+    debugPrint('[DB] Album check by rating_key: found ${albumCheck.length} albums');
+    
+    if (albumCheck.isEmpty) {
+      // Albums table is empty, check total albums in database
+      final totalAlbums = await db.rawQuery('SELECT COUNT(*) as count FROM albums');
+      final albumCount = (totalAlbums.first['count'] as int?) ?? 0;
+      debugPrint('[DB] No albums in database (total: $albumCount). Attempting to fetch tracks by rating key from track data...');
+      
+      // Try to find tracks that reference this album rating key via parentRatingKey
+      final tracksByKey = await db.rawQuery('''
+        SELECT 
+          t.*,
+          t.artist_name as artist_name_stored,
+          t.album_name as album_name_stored,
+          a.title as artist_name,
+          a.thumb as artist_thumb,
+          a.rating_key as artist_rating_key,
+          alb.title as album_name,
+          alb.thumb as album_thumb,
+          alb.rating_key as album_rating_key
+        FROM tracks t
+        LEFT JOIN albums alb ON t.album_id = alb.id
+        LEFT JOIN artists a ON t.artist_id = a.id
+        WHERE t.parent_rating_key = ?
+        ORDER BY t.disc_number ASC, t.track_number ASC, t.title ASC
+      ''', [albumRatingKey]);
+      
+      debugPrint('[DB] Found ${tracksByKey.length} tracks by parent_rating_key=$albumRatingKey');
+      if (tracksByKey.isNotEmpty) {
+        return tracksByKey.map((map) => mapTrackFromDb(map)).toList();
+      }
+    }
+    
+    // Standard query by album rating key
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
       SELECT 
         t.*,
@@ -91,6 +133,7 @@ extension AlbumsExtension on DatabaseService {
       ORDER BY t.disc_number ASC, t.track_number ASC, t.title ASC
     ''', [albumRatingKey]);
 
+    debugPrint('[DB] getTracksForAlbum query returned ${maps.length} tracks for albumRatingKey=$albumRatingKey');
     return maps.map((map) => mapTrackFromDb(map)).toList();
   }
 

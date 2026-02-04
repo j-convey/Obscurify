@@ -182,9 +182,13 @@ Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
         rating_key TEXT UNIQUE NOT NULL,
         title TEXT NOT NULL,
         artist_id INTEGER,
+        artist_name TEXT,
         thumb TEXT,
+        art TEXT,
         year INTEGER,
         server_id TEXT NOT NULL,
+        added_at INTEGER,
+        updated_at INTEGER,
         FOREIGN KEY (artist_id) REFERENCES artists(id)
       )
     ''');
@@ -255,5 +259,17 @@ Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     try { await db.execute('CREATE INDEX IF NOT EXISTS idx_artists_title ON artists(title)'); } catch (e) { /* ignore */ }
 
     print('DATABASE: Migrated to version 7 - enhanced metadata fields added');
+  }
+
+  if (oldVersion < 8) {
+    // Fix albums table schema - ensure all required columns exist
+    print('DATABASE: Migrating to version 8 - fixing albums table schema');
+    
+    try { await db.execute('ALTER TABLE albums ADD COLUMN artist_name TEXT'); } catch (e) { /* column may already exist */ }
+    try { await db.execute('ALTER TABLE albums ADD COLUMN art TEXT'); } catch (e) { /* column may already exist */ }
+    try { await db.execute('ALTER TABLE albums ADD COLUMN added_at INTEGER'); } catch (e) { /* column may already exist */ }
+    try { await db.execute('ALTER TABLE albums ADD COLUMN updated_at INTEGER'); } catch (e) { /* column may already exist */ }
+    
+    print('DATABASE: Migrated to version 8 - albums table schema fixed');
   }
 }
