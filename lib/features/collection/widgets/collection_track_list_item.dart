@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/audio_player_service.dart';
 import '../../../core/database/database_service.dart';
+import '../../../core/services/plex/plex_services.dart';
 import '../../album/album_page.dart';
+import '../../artist/artist_page.dart';
 
 /// A single track list item for collection pages.
 /// Displays track info and handles play interactions.
@@ -49,7 +51,9 @@ class CollectionTrackListItem extends StatefulWidget {
 
 class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
   bool _isAlbumHovered = false;
+  bool _isArtistHovered = false;
   final DatabaseService _dbService = DatabaseService();
+  final PlexServerService _serverService = PlexServerService();
 
   @override
   Widget build(BuildContext context) {
@@ -101,15 +105,7 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
                               fontSize: 14,
                             ),
                           ),
-                          Text(
-                            widget.track['artist'] as String,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 12,
-                            ),
-                          ),
+                          _buildArtistLink(),
                         ],
                       ),
                     ),
@@ -216,6 +212,45 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
     } else {
       debugPrint('TRACK_ITEM: Missing required data - service: ${widget.audioPlayerService != null}, token: ${widget.currentToken != null}');
     }
+  }
+
+  Widget _buildArtistLink() {
+    final artistName = widget.track['artist'] as String;
+    final artistId = widget.track['grandparentRatingKey'] as String?;
+    
+    if (artistId == null) {
+      // No artist link available
+      return Text(
+        artistName,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: Colors.grey[400],
+          fontSize: 12,
+        ),
+      );
+    }
+    
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isArtistHovered = true),
+      onExit: (_) => setState(() => _isArtistHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _navigateToArtist(context, artistId, artistName),
+        child: Text(
+          artistName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: _isArtistHovered ? Colors.white : Colors.grey[400],
+            fontSize: 12,
+            fontWeight: _isArtistHovered ? FontWeight.bold : FontWeight.normal,
+            decoration: _isArtistHovered ? TextDecoration.underline : null,
+            decorationColor: Colors.white,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildAlbumArt() {
@@ -334,12 +369,12 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
       onProfileTap: widget.onProfileTap,
       onLoadTracks: () {
         debugPrint('ALBUM_NAV: onLoadTracks callback called with albumId: $albumId');
-        return _dbService.getTracksForAlbum(albumId).then((tracks) {
-          debugPrint('ALBUM_NAV: getTracksForAlbum returned ${tracks.length} tracks');
+        return _dbService.tracks.getByAlbum(albumId).then((tracks) {
+          debugPrint('ALBUM_NAV: getByAlbum returned ${tracks.length} tracks');
           if (tracks.isEmpty) {
             debugPrint('ALBUM_NAV: WARNING - No tracks found for album!');
           }
-          return tracks;
+          return tracks.map((track) => track.toJson()).toList();
         }).catchError((error) {
           debugPrint('ALBUM_NAV: ERROR fetching album tracks: $error');
           throw error;
@@ -354,6 +389,61 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
       // Fallback to push if no navigation callback
       Navigator.of(context).push(
         MaterialPageRoute(builder: (context) => albumPage),
+      );
+    }
+  }
+
+  void _navigateToArtist(BuildContext context, String artistId, String artistName) async {
+    debugPrint('ARTIST_NAV: ===== Navigating to artist =====');
+    debugPrint('ARTIST_NAV: artistId: $artistId');
+    debugPrint('ARTIST_NAV: artistName: $artistName');
+    debugPrint('ARTIST_NAV: currentToken: ${widget.currentToken}');
+    debugPrint('ARTIST_NAV: currentServerUrl: ${widget.currentServerUrl}');
+    
+    if (widget.currentToken == null) {
+      debugPrint('ARTIST_NAV: ERROR - Missing token');
+      return;
+    }
+    
+    final trackServerId = widget.track['serverId'] as String?;
+    
+    // Use centralized server URL lookup like the player bar does
+    String? serverUrl = widget.currentServerUrl;
+    if (trackServerId != null) {
+      try {
+        serverUrl = await _serverService.getUrlForServer(widget.currentToken!, trackServerId);
+        debugPrint('ARTIST_NAV: Got URL for server $trackServerId: $serverUrl');
+      } catch (e) {
+        debugPrint('ARTIST_NAV: Error getting server URL: $e');
+      }
+    }
+    
+    // Fallback to current server URL if lookup failed
+    serverUrl ??= widget.currentServerUrl;
+    
+    if (serverUrl == null) {
+      debugPrint('ARTIST_NAV: ERROR - No server URL available');
+      return;
+    }
+    
+    debugPrint('ARTIST_NAV: Creating ArtistPage with serverUrl: $serverUrl');
+    
+    final artistPage = ArtistPage(
+      artistId: artistId,
+      artistName: artistName,
+      serverUrl: serverUrl,
+      token: widget.currentToken!,
+      audioPlayerService: widget.audioPlayerService,
+      onNavigate: widget.onNavigate,
+    );
+
+    // Use onNavigate callback if available (keeps MainScreen's app bar consistent)
+    if (widget.onNavigate != null) {
+      widget.onNavigate!(artistPage);
+    } else {
+      // Fallback to push if no navigation callback
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => artistPage),
       );
     }
   }
