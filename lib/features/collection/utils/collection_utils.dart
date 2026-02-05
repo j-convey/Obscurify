@@ -17,6 +17,22 @@ class CollectionUtils {
     return DateFormat('MMM d, y').format(date);
   }
 
+  /// Set of special characters to skip at the beginning of strings
+  static const String _specialCharsToSkip = '!\"#\$%&\'()*+,-./:;<=>?@[\\\\]^_`{|}~';
+
+  /// Extract the first meaningful character's position in a string
+  /// Skips leading special characters (punctuation, brackets, quotes, etc)
+  /// Works with all Unicode characters (English, Japanese, Arabic, etc)
+  static String _stripLeadingSpecialChars(String str) {
+    final lowerStr = str.toLowerCase();
+    int i = 0;
+    // Skip all special characters at the start
+    while (i < lowerStr.length && _specialCharsToSkip.contains(lowerStr[i])) {
+      i++;
+    }
+    return lowerStr.substring(i);
+  }
+
   /// Sort tracks by given column
   static void sortTracks(
     List<Map<String, dynamic>> tracks,
@@ -33,7 +49,10 @@ class CollectionUtils {
 
       int comparison;
       if (aValue is String && bValue is String) {
-        comparison = aValue.toLowerCase().compareTo(bValue.toLowerCase());
+        // For string sorting, strip leading special characters
+        final aStripped = _stripLeadingSpecialChars(aValue);
+        final bStripped = _stripLeadingSpecialChars(bValue);
+        comparison = aStripped.compareTo(bStripped);
       } else if (aValue is int && bValue is int) {
         comparison = aValue.compareTo(bValue);
       } else {
