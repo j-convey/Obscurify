@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../database/database_service.dart';
 import '../../services/audio_player_service.dart';
 import '../../services/plex/plex_services.dart';
 import '../../../features/artist/artist_page.dart';
@@ -21,6 +22,79 @@ class TrackInfoSection extends StatefulWidget {
 
 class _TrackInfoSectionState extends State<TrackInfoSection> {
   bool _isArtistHovered = false;
+  double? _localRating;
+  bool _isUpdatingRating = false;
+  String? _lastTrackRatingKey;
+
+  @override
+  void didUpdateWidget(TrackInfoSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reset local rating when track changes
+    final currentRatingKey = widget.track['ratingKey']?.toString();
+    if (currentRatingKey != _lastTrackRatingKey) {
+      _lastTrackRatingKey = currentRatingKey;
+      _localRating = null;
+      final trackTitle = widget.track['title'];
+      final rawUserRating = widget.track['userRating'];
+      debugPrint('HEART_DEBUG: ========================================');
+      debugPrint('HEART_DEBUG: Track changed to: "$trackTitle"');
+      debugPrint('HEART_DEBUG: ratingKey: $currentRatingKey');
+      debugPrint('HEART_DEBUG: raw userRating value: $rawUserRating');
+      debugPrint('HEART_DEBUG: userRating type: ${rawUserRating?.runtimeType}');
+      debugPrint('HEART_DEBUG: _currentRating will be: $_currentRating');
+      debugPrint('HEART_DEBUG: _isLiked will be: $_isLiked');
+      debugPrint('HEART_DEBUG: ========================================');
+    }
+  }
+
+  double? get _currentRating {
+    return _localRating ?? (widget.track['userRating'] as num?)?.toDouble();
+  }
+
+  bool get _isLiked => (_currentRating ?? 0) >= 5;
+
+  Future<void> _toggleLike() async {
+    if (_isUpdatingRating) return;
+
+    final ratingKey = widget.track['ratingKey']?.toString();
+    final serverUrl = widget.playerService.currentServerUrl;
+    final token = widget.playerService.currentToken;
+
+    if (ratingKey == null || serverUrl == null || token == null) {
+      debugPrint('LIKE: Missing data - ratingKey: $ratingKey, serverUrl: $serverUrl, token: ${token != null}');
+      return;
+    }
+
+    setState(() => _isUpdatingRating = true);
+
+    try {
+      final ratingService = PlexRatingService();
+      final newRating = await ratingService.toggleLike(
+        serverUrl: serverUrl,
+        token: token,
+        ratingKey: ratingKey,
+        currentRating: _currentRating,
+      );
+
+      if (newRating != null) {
+        // Update local state immediately for responsive UI
+        setState(() => _localRating = newRating);
+
+        // Update the database in background
+        final dbService = DatabaseService();
+        await dbService.tracks.updateRating(ratingKey, newRating);
+
+        // Update the track in the player service queue
+        widget.playerService.updateTrackRating(ratingKey, newRating);
+
+        debugPrint('LIKE: Updated rating to $newRating for $ratingKey');
+      }
+    } catch (e) {
+      debugPrint('LIKE: Error toggling like: $e');
+    } finally {
+      setState(() => _isUpdatingRating = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -142,13 +216,23 @@ class _TrackInfoSectionState extends State<TrackInfoSection> {
           ),
         ),
         const SizedBox(width: 8),
-        // Like button
+        // Like button - shows filled red heart if rating >= 5
         IconButton(
-          icon: const Icon(Icons.favorite_border, size: 20),
-          color: Colors.grey[400],
-          onPressed: () {
-            // TODO: Implement like functionality
-          },
+          icon: _isUpdatingRating
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.grey,
+                  ),
+                )
+              : Icon(
+                  _isLiked ? Icons.favorite : Icons.favorite_border,
+                  size: 20,
+                ),
+          color: _isLiked ? Colors.red : Colors.grey[400],
+          onPressed: _isUpdatingRating ? null : _toggleLike,
         ),
       ],
     );

@@ -111,6 +111,16 @@ class PlexLibraryService {
 
           final tracks = metadata as List<dynamic>;
           debugPrint('Found ${tracks.length} tracks');
+          
+          // DEBUG: Check how many tracks have userRating from Plex API
+          int ratedCount = 0;
+          for (var track in tracks) {
+            if (track['userRating'] != null) {
+              ratedCount++;
+              debugPrint('SYNC_DEBUG [API]: Track "${track['title']}" has userRating: ${track['userRating']}');
+            }
+          }
+          debugPrint('SYNC_DEBUG [API]: $ratedCount out of ${tracks.length} tracks have userRating from Plex API');
 
           return _mapTracks(tracks);
         }
@@ -125,11 +135,18 @@ class PlexLibraryService {
 
   /// Maps raw track data to a standardized format.
   List<Map<String, dynamic>> _mapTracks(List<dynamic> tracks) {
-    return tracks
+    int mappedRatedCount = 0;
+    final result = tracks
         .map((track) {
           final grandparentRatingKey = track['grandparentRatingKey'];
           final grandparentTitle = track['grandparentTitle'];
           final parentRatingKey = track['parentRatingKey'];
+          final userRating = track['userRating'];
+          
+          if (userRating != null) {
+            mappedRatedCount++;
+            debugPrint('SYNC_DEBUG [MAP]: Mapping track "${track['title']}" with userRating: $userRating');
+          }
           
           if (grandparentRatingKey == null) {
             debugPrint('WARNING: Track has no grandparentRatingKey - ${track['title']}');
@@ -158,8 +175,11 @@ class PlexLibraryService {
             'parentTitle': track['parentTitle'],
             'parentThumb': track['parentThumb'],
             'ratingKey': track['ratingKey'],
+            'userRating': userRating,
           };
         })
         .toList();
+    debugPrint('SYNC_DEBUG [MAP]: Mapped $mappedRatedCount tracks with userRating');
+    return result;
   }
 }

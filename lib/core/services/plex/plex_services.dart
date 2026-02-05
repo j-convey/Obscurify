@@ -8,3 +8,4 @@ export 'plex_auth_service.dart';
 export 'plex_server_service.dart';
 export 'plex_library_service.dart';
 export 'plex_artist_service.dart';
+export 'plex_rating_service.dart';

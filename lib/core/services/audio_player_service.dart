@@ -240,6 +240,22 @@ class AudioPlayerService extends ChangeNotifier {
     await _player.setVolume(volume * 100); // media_kit uses 0-100
   }
 
+  /// Update the rating for a track in the queue and current track
+  void updateTrackRating(String ratingKey, double rating) {
+    // Update in the queue
+    for (int i = 0; i < _playQueue.length; i++) {
+      if (_playQueue[i]['ratingKey']?.toString() == ratingKey) {
+        _playQueue[i]['userRating'] = rating;
+      }
+    }
+    
+    // Update current track if it matches
+    if (_currentTrack != null && _currentTrack!['ratingKey']?.toString() == ratingKey) {
+      _currentTrack!['userRating'] = rating;
+      notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
     _playingSubscription.cancel();

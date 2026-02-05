@@ -22,6 +22,15 @@ class PlexApiClient {
     );
   }
 
+  /// Makes a PUT request to the Plex API with standard headers.
+  Future<http.Response> put(String url, {String? token, Object? body}) async {
+    return await http.put(
+      Uri.parse(url),
+      headers: _buildHeaders(token: token),
+      body: body,
+    );
+  }
+
   /// Makes a GET request with a timeout.
   Future<http.Response> getWithTimeout(
     String url, {

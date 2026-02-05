@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import '../utils/string_utils.dart';
 
 /// Model class representing a music track.
@@ -56,8 +57,8 @@ class Track {
   /// Returns a version of the title sanitized for alphabetical sorting.
   String get sortableTitle => ApolloStringUtils.toSortable(title);
 
-  /// Check if track is liked (rating >= 10)
-  bool get isLiked => (userRating ?? 0) >= 10.0;
+  /// Check if track is liked (rating >= 5)
+  bool get isLiked => (userRating ?? 0) >= 5.0;
 
   /// Creates a Track from database row (includes view columns)
   factory Track.fromDb(Map<String, dynamic> map) {
@@ -90,11 +91,18 @@ class Track {
         (map['album_rating_key'] as String?) ?? (map['parent_rating_key'] as String?);
     final artistRatingKey = (map['artist_rating_key'] as String?) ??
         (map['grandparent_rating_key'] as String?);
+    
+    final userRating = map['user_rating'] as double?;
+    final title = map['title'] as String? ?? 'Unknown';
+    
+    if (userRating != null) {
+      debugPrint('SYNC_DEBUG [fromDb]: Track "$title" loaded with user_rating: $userRating');
+    }
 
     return Track(
       id: map['id'] as int?,
       ratingKey: map['rating_key'] as String? ?? '',
-      title: map['title'] as String? ?? 'Unknown',
+      title: title,
       artistName: artistName,
       artistRatingKey: artistRatingKey,
       albumName: albumName,
@@ -110,7 +118,7 @@ class Track {
       artistThumb: artistThumb,
       year: map['year'] as int?,
       genre: map['genre'] as String?,
-      userRating: map['user_rating'] as double?,
+      userRating: userRating,
       serverId: map['server_id'] as String? ?? '',
       libraryKey: map['library_key'] as String? ?? '',
       addedAt: map['added_at'] as int?,
@@ -124,9 +132,16 @@ class Track {
     required String serverId,
     required String libraryKey,
   }) {
+    final userRating = json['userRating']?.toDouble();
+    final title = json['title'] ?? 'Unknown';
+    
+    if (userRating != null) {
+      debugPrint('SYNC_DEBUG [fromPlexJson]: Track "$title" has userRating: $userRating');
+    }
+    
     return Track(
       ratingKey: json['ratingKey']?.toString() ?? '',
-      title: json['title'] ?? 'Unknown',
+      title: title,
       artistName: json['grandparentTitle'] ?? 'Unknown Artist',
       artistRatingKey: json['grandparentRatingKey']?.toString(),
       albumName: json['parentTitle'] ?? 'Unknown Album',
@@ -142,7 +157,7 @@ class Track {
       genre: json['Genre'] != null && (json['Genre'] as List).isNotEmpty
           ? json['Genre'][0]['tag']
           : null,
-      userRating: json['userRating']?.toDouble(),
+      userRating: userRating,
       serverId: serverId,
       libraryKey: libraryKey,
       addedAt: json['addedAt'],
@@ -152,6 +167,9 @@ class Track {
 
   /// Convert to database map for insert/update
   Map<String, dynamic> toDb() {
+    if (userRating != null) {
+      debugPrint('SYNC_DEBUG [toDb]: Track "$title" saving with user_rating: $userRating');
+    }
     return {
       if (id != null) 'id': id,
       'server_id': serverId,
@@ -181,6 +199,9 @@ class Track {
 
   /// Convert to Map for UI consumption (backward compatible)
   Map<String, dynamic> toJson() {
+    if (userRating != null) {
+      debugPrint('SYNC_DEBUG [toJson]: Track "$title" converting with userRating: $userRating');
+    }
     return {
       'id': id,
       'ratingKey': ratingKey,

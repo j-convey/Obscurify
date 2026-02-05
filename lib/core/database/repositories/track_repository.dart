@@ -70,11 +70,11 @@ class TrackRepository extends BaseRepository {
     return maps.map(Track.fromDb).toList();
   }
 
-  /// Get liked tracks (rating >= 10)
+  /// Get liked tracks (rating >= 5)
   Future<List<Track>> getLiked() async {
     final maps = await rawQuery('''
       SELECT * FROM v_tracks_full 
-      WHERE user_rating >= 10.0
+      WHERE user_rating >= 5.0
       ORDER BY title COLLATE NOCASE ASC
     ''');
     return maps.map(Track.fromDb).toList();
