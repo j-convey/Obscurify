@@ -25,6 +25,12 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
   Map<String, List<Map<String, dynamic>>> _serverLibraries = {};
   Map<String, Set<String>> _selectedLibraries = {};
   Map<String, dynamic>? _syncStatus;
+  double _syncProgress = 0.0;
+  int _syncProgressCurrent = 0;
+  int _syncProgressTotal = 0;
+  String? _currentSyncingLibrary;
+  int _totalTracksSynced = 0;
+  int _estimatedTotalTracks = 0;
 
   static const Color _backgroundColor = Color(0xFF303030);
 
@@ -100,6 +106,43 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
         throw Exception('No libraries selected');
       }
 
+      // Calculate total libraries to sync
+      int totalLibraries = 0;
+      for (var server in _servers) {
+        final libraryKeys = selectedServers[server.machineIdentifier];
+        if (libraryKeys != null && libraryKeys.isNotEmpty) {
+          totalLibraries += libraryKeys.length;
+        }
+      }
+
+      // First pass: estimate total tracks by fetching counts
+      int estimatedTracks = 0;
+      for (var server in _servers) {
+        final libraryKeys = selectedServers[server.machineIdentifier];
+        if (libraryKeys != null && libraryKeys.isNotEmpty) {
+          final serverUrl = _serverService.getBestConnectionUrlForServer(server);
+          if (serverUrl != null) {
+            for (var libraryKey in libraryKeys) {
+              try {
+                final tracks = await _libraryService.getTracks(token, serverUrl, libraryKey);
+                estimatedTracks += tracks.length;
+              } catch (e) {
+                // Continue if error
+              }
+            }
+          }
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _syncProgressTotal = totalLibraries;
+        _syncProgressCurrent = 0;
+        _syncProgress = 0.0;
+        _totalTracksSynced = 0;
+        _estimatedTotalTracks = estimatedTracks > 0 ? estimatedTracks : 1;
+      });
+
       int totalTracks = 0;
       
       // Sync tracks from all selected libraries
@@ -111,11 +154,47 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
           
           if (serverUrl != null) {
             for (var libraryKey in libraryKeys) {
+              if (!mounted) return;
+              
+              // Update progress tracking
+              final libraryInfo = _serverLibraries[server.machineIdentifier]
+                  ?.firstWhere(
+                    (lib) => lib['key'] == libraryKey,
+                    orElse: () => {'title': 'Library $libraryKey'},
+                  );
+              final libraryTitle = libraryInfo?['title'] as String? ?? 'Library $libraryKey';
+              
+              setState(() {
+                _currentSyncingLibrary = libraryTitle;
+              });
+              
+              // Allow UI to render progress update
+              await Future.delayed(const Duration(milliseconds: 50));
+
               print('Syncing library $libraryKey from server ${server.machineIdentifier}...');
               
               final tracks = await _libraryService.getTracks(token, serverUrl, libraryKey);
               
-              // Add serverId to each track
+              // Update progress for each track after fetching
+              for (int i = 0; i < tracks.length; i++) {
+                if (!mounted) return;
+                
+                final track = tracks[i];
+                track['serverId'] = server.machineIdentifier;
+                
+                // Update progress after each track
+                setState(() {
+                  _totalTracksSynced++;
+                  _syncProgress = _estimatedTotalTracks > 0 ? _totalTracksSynced / _estimatedTotalTracks : 0.0;
+                });
+                
+                // Render update every 5 tracks or on last track
+                if (i % 5 == 0 || i == tracks.length - 1) {
+                  await Future.delayed(const Duration(milliseconds: 16));
+                }
+              }
+              
+              // Add serverId to all tracks
               final tracksWithServerId = tracks.map((track) {
                 track['serverId'] = server.machineIdentifier;
                 return track;
@@ -123,6 +202,11 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
               
               await _dbService.saveTracks(server.machineIdentifier, libraryKey, tracksWithServerId);
               totalTracks += tracks.length;
+              
+              if (!mounted) return;
+              setState(() {
+                _syncProgressCurrent++;
+              });
               
               print('Synced ${tracks.length} tracks from library $libraryKey');
             }
@@ -151,7 +235,15 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
       }
     } finally {
       if (mounted) {
-        setState(() => _isSyncing = false);
+        setState(() {
+          _isSyncing = false;
+          _syncProgress = 0.0;
+          _syncProgressCurrent = 0;
+          _syncProgressTotal = 0;
+          _totalTracksSynced = 0;
+          _estimatedTotalTracks = 0;
+          _currentSyncingLibrary = null;
+        });
       }
     }
   }
@@ -474,7 +566,51 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
                                 ),
                               ],
                             ),
-                            if (_syncStatus != null) ...[
+                            if (_isSyncing && _estimatedTotalTracks > 0) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue[50],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.blue[300]!),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.sync, size: 20, color: Colors.blue),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Syncing $_currentSyncingLibrary',
+                                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: _syncProgress,
+                                        minHeight: 6,
+                                        backgroundColor: Colors.grey[300],
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      '${(_syncProgress * 100).toStringAsFixed(0)}% • $_totalTracksSynced of $_estimatedTotalTracks songs',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            if (_syncStatus != null && !_isSyncing) ...[
                               const SizedBox(height: 16),
                               Container(
                                 padding: const EdgeInsets.all(12),
