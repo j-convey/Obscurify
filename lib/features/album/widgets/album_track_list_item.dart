@@ -74,22 +74,19 @@ class _AlbumTrackListItemState extends State<AlbumTrackListItem> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      widget.track['title'] as String,
+                      widget.track['title'] as String? ?? 'Unknown Title',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
                     ),
                     Text(
-                      widget.track['artist'] as String,
+                      widget.track['artist'] as String? ??
+                          widget.track['grandparentTitle'] as String? ??
+                          widget.track['originalTitle'] as String? ??
+                          'Unknown Artist',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
                     ),
                   ],
                 ),
@@ -99,10 +96,7 @@ class _AlbumTrackListItemState extends State<AlbumTrackListItem> {
                 flex: 1,
                 child: Text(
                   widget.formatDuration(widget.track['duration'] as int?),
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
                 ),
               ),
               const SizedBox(width: 16),
@@ -126,27 +120,36 @@ class _AlbumTrackListItemState extends State<AlbumTrackListItem> {
   }
 
   void _onTrackTapped() {
-    debugPrint('ALBUM_TRACK_ITEM: ===== Track tapped: ${widget.track['title']} =====');
+    debugPrint(
+      'ALBUM_TRACK_ITEM: ===== Track tapped: ${widget.track['title']} =====',
+    );
     if (widget.audioPlayerService != null && widget.currentToken != null) {
       // Get the correct server URL based on the track's serverId
       final trackServerId = widget.track['serverId'] as String?;
-      final trackServerUrl = trackServerId != null && widget.serverUrls.containsKey(trackServerId)
+      final trackServerUrl =
+          trackServerId != null && widget.serverUrls.containsKey(trackServerId)
           ? widget.serverUrls[trackServerId]!
           : widget.currentServerUrl;
 
       if (trackServerUrl == null) {
-        debugPrint('ALBUM_TRACK_ITEM: ERROR - No server URL found for track (serverId: $trackServerId)');
+        debugPrint(
+          'ALBUM_TRACK_ITEM: ERROR - No server URL found for track (serverId: $trackServerId)',
+        );
         return;
       }
 
       debugPrint('ALBUM_TRACK_ITEM: Track serverId: $trackServerId');
       debugPrint('ALBUM_TRACK_ITEM: Using server URL: $trackServerUrl');
-      debugPrint('ALBUM_TRACK_ITEM: Calling setPlayQueue with ${widget.tracks.length} tracks, index ${widget.index}');
+      debugPrint(
+        'ALBUM_TRACK_ITEM: Calling setPlayQueue with ${widget.tracks.length} tracks, index ${widget.index}',
+      );
 
       final startTime = DateTime.now();
       widget.audioPlayerService!.setPlayQueue(widget.tracks, widget.index);
       final endTime = DateTime.now();
-      debugPrint('ALBUM_TRACK_ITEM: setPlayQueue took ${endTime.difference(startTime).inMilliseconds}ms');
+      debugPrint(
+        'ALBUM_TRACK_ITEM: setPlayQueue took ${endTime.difference(startTime).inMilliseconds}ms',
+      );
 
       debugPrint('ALBUM_TRACK_ITEM: Calling playTrack');
       final playStartTime = DateTime.now();
@@ -156,9 +159,13 @@ class _AlbumTrackListItemState extends State<AlbumTrackListItem> {
         trackServerUrl,
       );
       final playEndTime = DateTime.now();
-      debugPrint('ALBUM_TRACK_ITEM: playTrack call returned in ${playEndTime.difference(playStartTime).inMilliseconds}ms');
+      debugPrint(
+        'ALBUM_TRACK_ITEM: playTrack call returned in ${playEndTime.difference(playStartTime).inMilliseconds}ms',
+      );
     } else {
-      debugPrint('ALBUM_TRACK_ITEM: Missing required data - service: ${widget.audioPlayerService != null}, token: ${widget.currentToken != null}');
+      debugPrint(
+        'ALBUM_TRACK_ITEM: Missing required data - service: ${widget.audioPlayerService != null}, token: ${widget.currentToken != null}',
+      );
     }
   }
 }

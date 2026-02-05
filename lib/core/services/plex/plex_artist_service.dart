@@ -28,7 +28,9 @@ class PlexArtistService {
         }
       }
 
-      debugPrint('ARTIST_SERVICE: Failed to fetch artist. Status: ${response.statusCode}');
+      debugPrint(
+        'ARTIST_SERVICE: Failed to fetch artist. Status: ${response.statusCode}',
+      );
       return null;
     } catch (e) {
       debugPrint('ARTIST_SERVICE: Error fetching artist: $e');
@@ -61,7 +63,8 @@ class PlexArtistService {
       }
 
       debugPrint(
-          'ARTIST_SERVICE: Failed to fetch tracks. Status: ${response.statusCode}');
+        'ARTIST_SERVICE: Failed to fetch tracks. Status: ${response.statusCode}',
+      );
       return [];
     } catch (e) {
       debugPrint('ARTIST_SERVICE: Error fetching tracks: $e');
@@ -94,10 +97,45 @@ class PlexArtistService {
       }
 
       debugPrint(
-          'ARTIST_SERVICE: Failed to fetch albums. Status: ${response.statusCode}');
+        'ARTIST_SERVICE: Failed to fetch albums. Status: ${response.statusCode}',
+      );
       return [];
     } catch (e) {
       debugPrint('ARTIST_SERVICE: Error fetching albums: $e');
+      return [];
+    }
+  }
+
+  /// Fetches tracks for a specific album.
+  /// Returns a list of track data maps.
+  Future<List<Map<String, dynamic>>> getAlbumTracks({
+    required String albumId,
+    required String serverUrl,
+    required String token,
+  }) async {
+    try {
+      final url =
+          '$serverUrl/library/metadata/$albumId/children?X-Plex-Token=$token';
+      debugPrint('ARTIST_SERVICE: Fetching album tracks from: $url');
+
+      final response = await _apiClient.get(url, token: token);
+
+      if (response.statusCode == 200) {
+        final data = _apiClient.decodeJson(response);
+        final tracks = data['MediaContainer']?['Metadata'] as List<dynamic>?;
+
+        if (tracks != null) {
+          debugPrint('ARTIST_SERVICE: Found ${tracks.length} tracks in album');
+          return tracks.cast<Map<String, dynamic>>();
+        }
+      }
+
+      debugPrint(
+        'ARTIST_SERVICE: Failed to fetch album tracks. Status: ${response.statusCode}',
+      );
+      return [];
+    } catch (e) {
+      debugPrint('ARTIST_SERVICE: Error fetching album tracks: $e');
       return [];
     }
   }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../core/models/artist.dart';
 import '../../core/services/plex/plex_artist_service.dart';
 import '../../core/services/audio_player_service.dart';
+import '../album/album_page.dart';
+import 'widgets/artist_albums_carousel.dart';
 
 /// Artist page displaying artist info and popular tracks.
 /// Inspired by Spotify's artist page design.
@@ -32,6 +34,7 @@ class _ArtistPageState extends State<ArtistPage> {
 
   Artist? _artist;
   List<Map<String, dynamic>> _tracks = [];
+  List<Map<String, dynamic>> _albums = [];
   bool _isLoading = true;
   bool _showAllTracks = false;
   int _hoveredTrackIndex = -1;
@@ -54,7 +57,7 @@ class _ArtistPageState extends State<ArtistPage> {
     setState(() => _isLoading = true);
 
     try {
-      // Fetch artist details and tracks in parallel
+      // Fetch artist details, tracks, and albums in parallel
       final results = await Future.wait([
         _artistService.getArtistDetails(
           artistId: widget.artistId,
@@ -66,11 +69,17 @@ class _ArtistPageState extends State<ArtistPage> {
           serverUrl: widget.serverUrl,
           token: widget.token,
         ),
+        _artistService.getArtistAlbums(
+          artistId: widget.artistId,
+          serverUrl: widget.serverUrl,
+          token: widget.token,
+        ),
       ]);
 
       setState(() {
         _artist = results[0] as Artist?;
         _tracks = results[1] as List<Map<String, dynamic>>;
+        _albums = results[2] as List<Map<String, dynamic>>;
         _isLoading = false;
       });
     } catch (e) {
@@ -174,6 +183,9 @@ class _ArtistPageState extends State<ArtistPage> {
           // Show more/less button
           SliverToBoxAdapter(child: _buildShowMoreButton()),
 
+          // Albums carousel
+          SliverToBoxAdapter(child: _buildAlbumsCarousel()),
+
           // Bottom padding
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
@@ -192,10 +204,7 @@ class _ArtistPageState extends State<ArtistPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.grey[800]!,
-              const Color(0xFF121212),
-            ],
+            colors: [Colors.grey[800]!, const Color(0xFF121212)],
           ),
         ),
         child: Stack(
@@ -209,8 +218,8 @@ class _ArtistPageState extends State<ArtistPage> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                          Colors.black.withValues(alpha: 0.3),
-                          Colors.black.withValues(alpha: 0.8),
+                        Colors.black.withValues(alpha: 0.3),
+                        Colors.black.withValues(alpha: 0.8),
                         const Color(0xFF121212),
                       ],
                       stops: const [0.0, 0.6, 1.0],
@@ -239,11 +248,7 @@ class _ArtistPageState extends State<ArtistPage> {
                   // Verified badge (optional)
                   Row(
                     children: [
-                      Icon(
-                        Icons.verified,
-                        color: Colors.blue[400],
-                        size: 24,
-                      ),
+                      Icon(Icons.verified, color: Colors.blue[400], size: 24),
                       const SizedBox(width: 8),
                       const Text(
                         'Verified Artist',
@@ -274,10 +279,7 @@ class _ArtistPageState extends State<ArtistPage> {
                   // Stats
                   Text(
                     '${_tracks.length} songs • ${_artist?.albumCount ?? 0} albums',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey[400], fontSize: 14),
                   ),
                 ],
               ),
@@ -368,19 +370,15 @@ class _ArtistPageState extends State<ArtistPage> {
   }
 
   Widget _buildTrackList() {
-    final displayTracks =
-        _showAllTracks ? _tracks : _tracks.take(5).toList();
+    final displayTracks = _showAllTracks ? _tracks : _tracks.take(5).toList();
 
     return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          final track = displayTracks[index];
-          final isHovered = _hoveredTrackIndex == index;
+      delegate: SliverChildBuilderDelegate((context, index) {
+        final track = displayTracks[index];
+        final isHovered = _hoveredTrackIndex == index;
 
-          return _buildTrackRow(track, index, isHovered);
-        },
-        childCount: displayTracks.length,
-      ),
+        return _buildTrackRow(track, index, isHovered);
+      }, childCount: displayTracks.length),
     );
   }
 
@@ -394,7 +392,9 @@ class _ArtistPageState extends State<ArtistPage> {
       child: InkWell(
         onTap: () => _playTrack(index),
         child: Container(
-          color: isHovered ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
+          color: isHovered
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           child: Row(
             children: [
@@ -403,7 +403,11 @@ class _ArtistPageState extends State<ArtistPage> {
                 width: 32,
                 child: Center(
                   child: isHovered
-                      ? const Icon(Icons.play_arrow, color: Colors.white, size: 20)
+                      ? const Icon(
+                          Icons.play_arrow,
+                          color: Colors.white,
+                          size: 20,
+                        )
                       : Text(
                           '${index + 1}',
                           style: TextStyle(
@@ -453,20 +457,14 @@ class _ArtistPageState extends State<ArtistPage> {
                   children: [
                     Text(
                       track['title'] ?? 'Unknown Title',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (track['parentTitle'] != null)
                       Text(
                         track['parentTitle'],
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.grey[400], fontSize: 14),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -477,10 +475,7 @@ class _ArtistPageState extends State<ArtistPage> {
               // Duration
               Text(
                 _formatDuration(duration),
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.grey[400], fontSize: 14),
               ),
 
               // More options on hover
@@ -524,5 +519,41 @@ class _ArtistPageState extends State<ArtistPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildAlbumsCarousel() {
+    return ArtistAlbumsCarousel(
+      albums: _albums,
+      serverUrl: widget.serverUrl,
+      token: widget.token,
+      onAlbumTap: _navigateToAlbum,
+    );
+  }
+
+  void _navigateToAlbum(Map<String, dynamic> album) {
+    final albumId = album['ratingKey']?.toString();
+    final albumTitle = album['title'] ?? 'Unknown Album';
+    final albumThumb = album['thumb'];
+
+    if (albumId == null) return;
+
+    final albumPage = AlbumPage(
+      title: albumTitle,
+      subtitle: _artist?.name ?? widget.artistName,
+      audioPlayerService: widget.audioPlayerService,
+      imageUrl: albumThumb != null ? _buildImageUrl(albumThumb) : null,
+      currentToken: widget.token,
+      currentServerUrl: widget.serverUrl,
+      onNavigate: widget.onNavigate,
+      onLoadTracks: () => _artistService.getAlbumTracks(
+        albumId: albumId,
+        serverUrl: widget.serverUrl,
+        token: widget.token,
+      ),
+    );
+
+    if (widget.onNavigate != null) {
+      widget.onNavigate!(albumPage);
+    }
   }
 }
