@@ -96,7 +96,7 @@ class CollectionHeader extends StatelessWidget {
             ],
           ),
           child: const Icon(
-            Icons.favorite,
+            Icons.library_music,
             size: 80,
             color: Colors.white,
           ),
