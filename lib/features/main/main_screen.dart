@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/apollo_app_bar.dart';
-import '../../core/widgets/player_bar.dart';
+import '../../core/widgets/player_bar/player_bar.dart';
 import '../../core/services/audio_player_service.dart';
 import '../../core/services/storage_service.dart';
 import '../home/home_page.dart';
