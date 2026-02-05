@@ -9,11 +9,17 @@ import 'playlist_service.dart';
 class PlaylistsPage extends StatefulWidget {
   final Function(Widget) onNavigate;
   final AudioPlayerService? audioPlayerService;
+  final VoidCallback? onHomeTap;
+  final VoidCallback? onSettingsTap;
+  final VoidCallback? onProfileTap;
 
   const PlaylistsPage({
     super.key,
     required this.onNavigate,
     this.audioPlayerService,
+    this.onHomeTap,
+    this.onSettingsTap,
+    this.onProfileTap,
   });
 
   @override
@@ -169,6 +175,10 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
         imageUrl: imageUrl,
         audioPlayerService: widget.audioPlayerService,
         playlistService: _playlistService,
+        onNavigate: widget.onNavigate,
+        onHomeTap: widget.onHomeTap,
+        onSettingsTap: widget.onSettingsTap,
+        onProfileTap: widget.onProfileTap,
       ),
     );
   }
@@ -182,6 +192,10 @@ class _PlaylistDetailPage extends StatefulWidget {
   final String? imageUrl;
   final AudioPlayerService? audioPlayerService;
   final PlaylistService playlistService;
+  final Function(Widget)? onNavigate;
+  final VoidCallback? onHomeTap;
+  final VoidCallback? onSettingsTap;
+  final VoidCallback? onProfileTap;
 
   const _PlaylistDetailPage({
     required this.playlist,
@@ -190,6 +204,10 @@ class _PlaylistDetailPage extends StatefulWidget {
     this.imageUrl,
     this.audioPlayerService,
     required this.playlistService,
+    this.onNavigate,
+    this.onHomeTap,
+    this.onSettingsTap,
+    this.onProfileTap,
   });
 
   @override
@@ -281,6 +299,10 @@ class _PlaylistDetailPageState extends State<_PlaylistDetailPage> {
       serverUrls: {}, // Playlist tracks don't need server mapping
       currentServerUrl: widget.serverUrl,
       emptyMessage: 'This playlist is empty.',
+      onNavigate: widget.onNavigate,
+      onHomeTap: widget.onHomeTap,
+      onSettingsTap: widget.onSettingsTap,
+      onProfileTap: widget.onProfileTap,
     );
   }
 }
