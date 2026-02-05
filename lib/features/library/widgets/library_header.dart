@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-class SongsHeader extends StatelessWidget {
+class LibraryHeader extends StatelessWidget {
   final int trackCount;
 
-  const SongsHeader({
+  const LibraryHeader({
     super.key,
     required this.trackCount,
   });

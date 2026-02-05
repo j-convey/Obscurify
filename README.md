@@ -111,8 +111,8 @@ lib/
 │   ├── playlists/          # Playlist management
 │   ├── settings/           # App settings
 │   │   └── server/         # Server configuration
-│   └── songs/              # Song list and details
-│       ├── songs_page.dart
+│   └── library/            # Library page and details
+│       ├── library_page.dart
 │       ├── utils/
 │       └── widgets/
 └── main.dart               # Application entry point

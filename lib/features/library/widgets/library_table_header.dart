@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-class SongsTableHeader extends StatelessWidget {
+class LibraryTableHeader extends StatelessWidget {
   final String sortColumn;
   final bool sortAscending;
   final Function(String) onSort;
 
-  const SongsTableHeader({
+  const LibraryTableHeader({
     super.key,
     required this.sortColumn,
     required this.sortAscending,

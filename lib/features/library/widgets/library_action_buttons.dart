@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/audio_player_service.dart';
 
-class SongsActionButtons extends StatelessWidget {
+class LibraryActionButtons extends StatelessWidget {
   final List<Map<String, dynamic>> tracks;
   final AudioPlayerService? audioPlayerService;
   final String? currentToken;
   final Map<String, String> serverUrls;
   final String? currentServerUrl;
 
-  const SongsActionButtons({
+  const LibraryActionButtons({
     super.key,
     required this.tracks,
     required this.audioPlayerService,

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Custom scrollbar positioned on the right side of the songs list.
+/// Custom scrollbar positioned on the right side of the library list.
 /// Provides visual feedback for scroll position with styling for dark theme.
-class SongsScrollbar extends StatelessWidget {
+class LibraryScrollbar extends StatelessWidget {
   final ScrollController scrollController;
   final Widget child;
 
-  const SongsScrollbar({
+  const LibraryScrollbar({
     super.key,
     required this.scrollController,
     required this.child,

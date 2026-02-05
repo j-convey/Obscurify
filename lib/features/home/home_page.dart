@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/audio_player_service.dart';
 import '../../core/services/storage_service.dart';
-import '../songs/songs_page.dart';
+import '../library/library_page.dart';
 import '../playlists/playlists_page.dart';
 
 class HomePage extends StatelessWidget {
@@ -53,7 +53,7 @@ class HomePage extends StatelessWidget {
                     color: Colors.purple,
                     onTap: () {
                       if (onNavigate != null) {
-                        onNavigate!(SongsPage(
+                        onNavigate!(LibraryPage(
                           audioPlayerService: audioPlayerService,
                           onNavigate: onNavigate,
                           onHomeTap: onHomeTap,

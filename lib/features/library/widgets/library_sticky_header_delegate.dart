@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'songs_sticky_header_content.dart';
+import 'library_sticky_header_content.dart';
 
-/// Delegate that controls the sticky header behavior for the songs list.
+/// Delegate that controls the sticky header behavior for the library list.
 /// Keeps the column headers visible while scrolling.
-class SongsStickyHeaderDelegate extends SliverPersistentHeaderDelegate {
+class LibraryStickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double minHeight;
   final double maxHeight;
   final String sortColumn;
@@ -11,7 +11,7 @@ class SongsStickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   final Function(String) onSort;
   final double topPadding;
 
-  SongsStickyHeaderDelegate({
+  LibraryStickyHeaderDelegate({
     required this.minHeight,
     required this.maxHeight,
     required this.sortColumn,
@@ -33,7 +33,7 @@ class SongsStickyHeaderDelegate extends SliverPersistentHeaderDelegate {
         children: [
           if (topPadding > 0) SizedBox(height: topPadding),
           Expanded(
-            child: SongsStickyHeaderContent(
+            child: LibraryStickyHeaderContent(
               sortColumn: sortColumn,
               sortAscending: sortAscending,
               onSort: onSort,
@@ -45,7 +45,7 @@ class SongsStickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  bool shouldRebuild(SongsStickyHeaderDelegate oldDelegate) {
+  bool shouldRebuild(LibraryStickyHeaderDelegate oldDelegate) {
     return maxHeight != oldDelegate.maxHeight ||
         minHeight != oldDelegate.minHeight ||
         sortColumn != oldDelegate.sortColumn ||

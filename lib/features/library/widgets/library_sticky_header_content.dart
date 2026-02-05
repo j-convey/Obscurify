@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 /// The sticky header content that stays visible when scrolling.
 /// Contains only the column headers.
-class SongsStickyHeaderContent extends StatelessWidget {
+class LibraryStickyHeaderContent extends StatelessWidget {
   final String sortColumn;
   final bool sortAscending;
   final Function(String) onSort;
 
-  const SongsStickyHeaderContent({
+  const LibraryStickyHeaderContent({
     super.key,
     required this.sortColumn,
     required this.sortAscending,

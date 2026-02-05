@@ -1,6 +1,6 @@
 import 'package:intl/intl.dart';
 
-class SongsUtils {
+class LibraryUtils {
   static String formatDuration(int milliseconds) {
     final duration = Duration(milliseconds: milliseconds);
     final minutes = duration.inMinutes;
