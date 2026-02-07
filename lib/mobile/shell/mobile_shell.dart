@@ -5,6 +5,7 @@ import '../features/search/mobile_search_page.dart';
 import '../features/library/mobile_library_page.dart';
 import '../features/create/mobile_create_page.dart';
 import '../features/artist/mobile_artists_list_page.dart';
+import '../features/artist/mobile_artist_page.dart';
 import 'widgets/profile_drawer.dart';
 import '../features/player/widgets/mobile_mini_player.dart';
 import '../features/player/mobile_player_page.dart';
@@ -106,6 +107,20 @@ class _MobileShellState extends State<MobileShell> {
       backgroundColor: Colors.transparent,
       builder: (context) => MobilePlayerPage(
         audioPlayerService: _audioPlayerService,
+        onArtistTap: (artistId, artistName) {
+          Navigator.pop(context); // Close the player
+          // Navigate to the artist page within the Home tab
+          if (_currentIndex != 0) setState(() => _currentIndex = 0);
+          _homeNavigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (context) => MobileArtistPage(
+                artistId: artistId,
+                artistName: artistName,
+                audioPlayerService: _audioPlayerService,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

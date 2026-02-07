@@ -3,10 +3,12 @@ import '../../../../core/services/audio_player_service.dart';
 
 class MobilePlayerPage extends StatefulWidget {
   final AudioPlayerService audioPlayerService;
+  final void Function(String artistId, String artistName)? onArtistTap;
 
   const MobilePlayerPage({
     super.key,
     required this.audioPlayerService,
+    this.onArtistTap,
   });
 
   @override
@@ -155,14 +157,26 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              track['artist'] ?? 'Unknown Artist',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 18,
+                            GestureDetector(
+                              onTap: () {
+                                if (widget.onArtistTap != null) {
+                                  // Prefer grandparentRatingKey (Artist ID), fallback to empty string if not found
+                                  final artistId = track['grandparentRatingKey']?.toString() ?? '';
+                                  final artistName = track['artist'] ?? track['grandparentTitle'] ?? 'Unknown Artist';
+                                  if (artistId.isNotEmpty) {
+                                    widget.onArtistTap!(artistId, artistName);
+                                  }
+                                }
+                              },
+                              child: Text(
+                                track['artist'] ?? 'Unknown Artist',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 18,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
