@@ -4,6 +4,7 @@ import '../../../core/services/plex/plex_services.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/database/database_service.dart';
 import '../../../core/models/track.dart';
+import '../artist/mobile_artists_list_page.dart';
 import 'widgets/home_nav_bar.dart';
 
 /// Mobile home page with quick access buttons matching the desktop layout.
@@ -156,7 +157,12 @@ class _MobileHomePageState extends State<MobileHomePage> {
                             label: 'Artists',
                             color: Colors.orange,
                             onTap: () {
-                              // TODO: Navigate to artists
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const MobileArtistsListPage(),
+                                ),
+                              );
                             },
                           ),
                         ],
