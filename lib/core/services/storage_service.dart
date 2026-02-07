@@ -8,6 +8,13 @@ class StorageService {
   static const String _profileImagePathKey = 'profile_image_path';
   static const String _serverUrlKey = 'server_url';
   static const String _serverUrlMapKey = 'server_url_map';
+  
+  // AI API Keys
+  static const String _aiProviderKey = 'ai_provider';
+  static const String _openaiApiKey = 'openai_api_key';
+  static const String _geminiApiKey = 'gemini_api_key';
+  static const String _anthropicApiKey = 'anthropic_api_key';
+  static const String _ollamaUrlKey = 'ollama_url';
 
   // Save Plex token
   Future<void> savePlexToken(String token) async {
@@ -118,5 +125,57 @@ class StorageService {
     await prefs.remove(_usernameKey);
     await prefs.remove(_selectedServersKey);
     await prefs.remove(_serverUrlMapKey);
+  }
+
+  // --- AI Settings Methods ---
+
+  Future<void> saveAiProvider(String provider) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_aiProviderKey, provider);
+  }
+
+  Future<String?> getAiProvider() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_aiProviderKey);
+  }
+
+  Future<void> saveOpenAiApiKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_openaiApiKey, key);
+  }
+
+  Future<String?> getOpenAiApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_openaiApiKey);
+  }
+
+  Future<void> saveGeminiApiKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_geminiApiKey, key);
+  }
+
+  Future<String?> getGeminiApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_geminiApiKey);
+  }
+
+  Future<void> saveAnthropicApiKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_anthropicApiKey, key);
+  }
+
+  Future<String?> getAnthropicApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_anthropicApiKey);
+  }
+
+  Future<void> saveOllamaUrl(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_ollamaUrlKey, url);
+  }
+
+  Future<String?> getOllamaUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_ollamaUrlKey);
   }
 }
