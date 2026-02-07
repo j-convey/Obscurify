@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../features/ai/ai_page.dart';
 import '../../features/settings/server/mobile_server_settings_page.dart';
 
 /// Profile drawer that slides in from the left side with settings options.
@@ -65,6 +66,19 @@ class ProfileDrawer extends StatelessWidget {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
+                  _DrawerMenuItem(
+                    icon: Icons.auto_awesome,
+                    label: 'AI',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AiPage(),
+                        ),
+                      );
+                    },
+                  ),
                   _DrawerMenuItem(
                     icon: Icons.dns_outlined,
                     label: 'Server Settings',

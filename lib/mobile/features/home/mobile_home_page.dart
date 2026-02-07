@@ -4,18 +4,19 @@ import '../../../core/services/plex/plex_services.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/database/database_service.dart';
 import '../../../core/models/track.dart';
-import '../artist/mobile_artists_list_page.dart';
 import 'widgets/home_nav_bar.dart';
 
 /// Mobile home page with quick access buttons matching the desktop layout.
 class MobileHomePage extends StatefulWidget {
   final VoidCallback? onNavigateToLibrary;
+  final VoidCallback? onNavigateToArtists;
   final VoidCallback? onOpenDrawer;
   final AudioPlayerService? audioPlayerService;
   
   const MobileHomePage({
     super.key,
     this.onNavigateToLibrary,
+    this.onNavigateToArtists,
     this.onOpenDrawer,
     this.audioPlayerService,
   });
@@ -157,12 +158,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
                             label: 'Artists',
                             color: Colors.orange,
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const MobileArtistsListPage(),
-                                ),
-                              );
+                              widget.onNavigateToArtists?.call();
                             },
                           ),
                         ],
