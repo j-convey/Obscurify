@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../features/ai/ai_page.dart';
+import '../../features/settings/ai/ai_page.dart';
 import '../../features/settings/server/mobile_server_settings_page.dart';
 
 /// Profile drawer that slides in from the left side with settings options.
