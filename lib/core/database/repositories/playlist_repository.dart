@@ -59,6 +59,18 @@ class PlaylistRepository extends BaseRepository {
     return count('playlists');
   }
 
+  /// Check if a track is in any playlist
+  Future<bool> isTrackInAnyPlaylist(String trackKey) async {
+    // We need to join with the tracks table to get the internal track ID from the rating key
+    final maps = await rawQuery('''
+      SELECT 1 FROM playlist_tracks pt
+      JOIN tracks t ON pt.track_id = t.id
+      WHERE t.rating_key = ?
+      LIMIT 1
+    ''', [trackKey]);
+    return maps.isNotEmpty;
+  }
+
   // ============================================================
   // EAGER LOADING
   // ============================================================

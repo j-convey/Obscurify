@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
+import '../database/database_service.dart';
 
 class AudioPlayerService extends ChangeNotifier {
   late final Player _player;
@@ -8,9 +9,11 @@ class AudioPlayerService extends ChangeNotifier {
   late final StreamSubscription<Duration> _durationSubscription;
   late final StreamSubscription<Duration> _positionSubscription;
   late final StreamSubscription<bool> _completedSubscription;
+  final DatabaseService _dbService = DatabaseService();
 
   Map<String, dynamic>? _currentTrack;
   bool _isPlaying = false;
+  bool _isInPlaylist = false; // Flag to track if current song is in any playlist
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
   String? _currentToken;
@@ -65,6 +68,7 @@ class AudioPlayerService extends ChangeNotifier {
   // Getters
   Map<String, dynamic>? get currentTrack => _currentTrack;
   bool get isPlaying => _isPlaying;
+  bool get isInPlaylist => _isInPlaylist;
   Duration get duration => _duration;
   Duration get position => _position;
   String? get currentToken => _currentToken;
@@ -87,6 +91,24 @@ class AudioPlayerService extends ChangeNotifier {
     debugPrint('PLAYER: Queue set with ${_playQueue.length} tracks, starting at index $startIndex');
   }
 
+  // Check if current track is in any playlist
+  Future<void> _checkPlaylistStatus() async {
+    if (_currentTrack == null || _isDisposed) return;
+    
+    final ratingKey = _currentTrack!['ratingKey'] as String?;
+    if (ratingKey == null) return;
+
+    try {
+      final inPlaylist = await _dbService.playlists.isTrackInAnyPlaylist(ratingKey);
+      if (!_isDisposed) {
+        _isInPlaylist = inPlaylist;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error checking playlist status: $e');
+    }
+  }
+
   // Play a track
   Future<void> playTrack(
       Map<String, dynamic> track, String token, String serverUrl) async {
@@ -98,6 +120,7 @@ class AudioPlayerService extends ChangeNotifier {
       _currentTrack = track;
       _currentToken = token;
       _currentServerUrl = serverUrl;
+      _isInPlaylist = false; // Reset flag while loading
 
       // Construct the audio URL
       final media = track['Media'] as List<dynamic>?;
@@ -119,6 +142,9 @@ class AudioPlayerService extends ChangeNotifier {
 
       // Update UI immediately so player bar shows up
       notifyListeners();
+      
+      // Check playlist status in background
+      _checkPlaylistStatus();
 
       // Stop any current playback
       await _player.stop();
@@ -245,6 +271,7 @@ class AudioPlayerService extends ChangeNotifier {
     _isPlaying = false;
     _position = Duration.zero;
     _duration = Duration.zero;
+    _isInPlaylist = false;
     notifyListeners();
   }
 

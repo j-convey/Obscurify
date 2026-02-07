@@ -35,6 +35,7 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> {
         if (track == null) return const SizedBox.shrink();
 
         final isPlaying = widget.audioPlayerService.isPlaying;
+        final isInPlaylist = widget.audioPlayerService.isInPlaylist;
         final duration = widget.audioPlayerService.duration;
         final position = widget.audioPlayerService.position;
         final token = widget.audioPlayerService.currentToken;
@@ -181,14 +182,25 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> {
                           ],
                         ),
                       ),
-                      Container(
-                        decoration: const BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                        ),
-                        padding: const EdgeInsets.all(4),
-                        child: const Icon(Icons.check, color: Colors.black, size: 20),
-                      ),
+                      
+                      // Playlist Status Icon
+                      isInPlaylist
+                          ? Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                              ),
+                              padding: const EdgeInsets.all(4),
+                              child: const Icon(Icons.check, color: Colors.black, size: 20),
+                            )
+                          : Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              padding: const EdgeInsets.all(4),
+                              child: const Icon(Icons.add, color: Colors.white, size: 20),
+                            ),
                     ],
                   ),
                 ),

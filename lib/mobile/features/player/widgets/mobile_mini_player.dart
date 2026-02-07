@@ -20,6 +20,7 @@ class MobileMiniPlayer extends StatelessWidget {
         if (track == null) return const SizedBox.shrink();
 
         final isPlaying = audioPlayerService.isPlaying;
+        final isInPlaylist = audioPlayerService.isInPlaylist;
         final token = audioPlayerService.currentToken;
         final serverUrl = audioPlayerService.currentServerUrl;
 
@@ -127,15 +128,28 @@ class MobileMiniPlayer extends StatelessWidget {
                       iconSize: 24,
                     ),
                     const SizedBox(width: 16),
-                    Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                      ),
-                      width: 24,
-                      height: 24,
-                      child: const Icon(Icons.check, color: Colors.black, size: 16),
-                    ),
+                    
+                    // Playlist Status Icon
+                    isInPlaylist
+                        ? Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                            ),
+                            width: 24,
+                            height: 24,
+                            child: const Icon(Icons.check, color: Colors.black, size: 16),
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            width: 24,
+                            height: 24,
+                            child: const Icon(Icons.add, color: Colors.white, size: 16),
+                          ),
+
                     const SizedBox(width: 16),
                     IconButton(
                       icon: Icon(
