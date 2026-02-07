@@ -3,6 +3,7 @@ import 'package:apollo/core/services/plex/plex_services.dart';
 import 'package:apollo/core/services/storage_service.dart';
 import 'package:apollo/core/database/database_service.dart';
 import 'package:apollo/core/models/track.dart';
+import 'package:apollo/core/services/playlist_service.dart';
 
 /// Service class handling all server settings business logic
 class ServerSettingsService {
@@ -11,6 +12,7 @@ class ServerSettingsService {
   final PlexLibraryService libraryService = PlexLibraryService();
   final StorageService storageService = StorageService();
   final DatabaseService dbService = DatabaseService();
+  final PlaylistService playlistService = PlaylistService();
 
   Future<bool> validateToken(String token) async {
     return await authService.validateToken(token);
@@ -133,6 +135,7 @@ class ServerSettingsService {
           final serverUrl = serverService.getBestConnectionUrlForServer(server);
           
           if (serverUrl != null) {
+            // 1. Sync tracks from selected libraries
             for (var libraryKey in libraryKeys) {
               final libraryInfo = serverLibraries[server.machineIdentifier]
                   ?.firstWhere(
@@ -176,6 +179,50 @@ class ServerSettingsService {
               onTracksSyncedChange(totalTracks);
               
               debugPrint('Completed ${tracks.length} tracks from library $libraryKey');
+            }
+
+            // 2. Sync Playlists
+            onLibraryChange('Syncing Playlists...');
+            try {
+              debugPrint('Syncing playlists from server ${server.machineIdentifier}');
+              
+              // Fetch and save playlists
+              final playlists = await playlistService.syncPlaylists(
+                serverUrl,
+                token,
+                server.machineIdentifier,
+              );
+              
+              debugPrint('Found ${playlists.length} playlists. Fetching items...');
+              
+              // Fetch and save tracks for each playlist
+              for (final playlist in playlists) {
+                onLibraryChange('Syncing Playlist: ${playlist.title}');
+                
+                try {
+                  final tracksJson = await playlistService.getPlaylistTracks(
+                    serverUrl,
+                    token,
+                    playlist.id,
+                  );
+                  
+                  // Convert JSON tracks to Track objects
+                  final tracks = tracksJson.map((json) => Track.fromPlexJson(
+                    json,
+                    serverId: server.machineIdentifier,
+                    libraryKey: 'playlist_${playlist.id}', // Virtual library key for playlist
+                  )).toList();
+                  
+                  // Save relationship
+                  await dbService.playlists.saveTracks(playlist.id, tracks);
+                  debugPrint('Saved ${tracks.length} tracks for playlist ${playlist.title}');
+                } catch (e) {
+                  debugPrint('Error syncing items for playlist ${playlist.title}: $e');
+                }
+              }
+            } catch (e) {
+              debugPrint('Error syncing playlists: $e');
+              // Don't fail the whole sync if playlists fail
             }
           }
         }

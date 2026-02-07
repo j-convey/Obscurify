@@ -10,6 +10,7 @@ import 'widgets/home_nav_bar.dart';
 class MobileHomePage extends StatefulWidget {
   final VoidCallback? onNavigateToLibrary;
   final VoidCallback? onNavigateToArtists;
+  final VoidCallback? onNavigateToPlaylists;
   final VoidCallback? onOpenDrawer;
   final AudioPlayerService? audioPlayerService;
   
@@ -17,6 +18,7 @@ class MobileHomePage extends StatefulWidget {
     super.key,
     this.onNavigateToLibrary,
     this.onNavigateToArtists,
+    this.onNavigateToPlaylists,
     this.onOpenDrawer,
     this.audioPlayerService,
   });
@@ -150,7 +152,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
                             label: 'Playlists',
                             color: Colors.blue,
                             onTap: () {
-                              // TODO: Navigate to playlists
+                              widget.onNavigateToPlaylists?.call();
                             },
                           ),
                           _QuickAccessTile(

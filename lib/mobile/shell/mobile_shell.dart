@@ -6,6 +6,7 @@ import '../features/library/mobile_library_page.dart';
 import '../features/create/mobile_create_page.dart';
 import '../features/artist/mobile_artists_list_page.dart';
 import '../features/artist/mobile_artist_page.dart';
+import '../features/playlists/mobile_playlists_page.dart';
 import 'widgets/profile_drawer.dart';
 import '../features/player/widgets/mobile_mini_player.dart';
 import '../features/player/mobile_player_page.dart';
@@ -52,6 +53,18 @@ class _MobileShellState extends State<MobileShell> {
           builder: (context) => MobileHomePage(
             audioPlayerService: _audioPlayerService,
             onNavigateToLibrary: () => setState(() => _currentIndex = 2),
+            onNavigateToPlaylists: () {
+              // Ensure we are on the Home tab
+              if (_currentIndex != 0) setState(() => _currentIndex = 0);
+              // Push Playlists page onto the Home nested navigator
+              _homeNavigatorKey.currentState?.push(
+                MaterialPageRoute(
+                  builder: (context) => MobilePlaylistsPage(
+                    audioPlayerService: _audioPlayerService,
+                  ),
+                ),
+              );
+            },
             onNavigateToArtists: () {
               // Ensure we are on the Home tab
               if (_currentIndex != 0) setState(() => _currentIndex = 0);

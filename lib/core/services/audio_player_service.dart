@@ -16,18 +16,21 @@ class AudioPlayerService extends ChangeNotifier {
   String? _currentToken;
   String? _currentServerUrl;
   Map<String, String> _serverUrls = {}; // Map of serverId to serverUrl
+  bool _isDisposed = false; // Flag to track disposal state
 
   AudioPlayerService() {
     _player = Player();
     
     // Listen to player state changes
     _playingSubscription = _player.stream.playing.listen((playing) {
+      if (_isDisposed) return;
       _isPlaying = playing;
       notifyListeners();
     });
 
     // Listen to duration changes
     _durationSubscription = _player.stream.duration.listen((duration) {
+      if (_isDisposed) return;
       _duration = duration;
       notifyListeners();
     });
@@ -35,6 +38,7 @@ class AudioPlayerService extends ChangeNotifier {
     // Listen to position changes - throttle updates to reduce UI rebuilds
     Duration lastNotifiedPosition = Duration.zero;
     _positionSubscription = _player.stream.position.listen((position) {
+      if (_isDisposed) return;
       _position = position;
       // Only notify if position changed by at least 1 second to reduce rebuilds
       if ((position.inSeconds - lastNotifiedPosition.inSeconds).abs() >= 1) {
@@ -45,6 +49,7 @@ class AudioPlayerService extends ChangeNotifier {
 
     // Listen to completion
     _completedSubscription = _player.stream.completed.listen((completed) {
+      if (_isDisposed) return;
       if (completed) {
         _isPlaying = false;
         _position = Duration.zero;
@@ -69,12 +74,14 @@ class AudioPlayerService extends ChangeNotifier {
 
   // Set server URLs map
   void setServerUrls(Map<String, String> urls) {
+    if (_isDisposed) return;
     _serverUrls = urls;
     debugPrint('PLAYER: Server URLs updated: ${_serverUrls.keys.join(", ")}');
   }
 
   // Setter for the play queue (without auto-playing)
   void setPlayQueue(List<Map<String, dynamic>> queue, int startIndex) {
+    if (_isDisposed) return;
     _playQueue = queue; // Reference the list directly to avoid copying large lists
     _currentIndex = startIndex;
     debugPrint('PLAYER: Queue set with ${_playQueue.length} tracks, starting at index $startIndex');
@@ -83,6 +90,7 @@ class AudioPlayerService extends ChangeNotifier {
   // Play a track
   Future<void> playTrack(
       Map<String, dynamic> track, String token, String serverUrl) async {
+    if (_isDisposed) return;
     try {
       debugPrint('PLAYER: ===== playTrack() called =====');
       debugPrint('PLAYER: Track title: ${track['title']}');
@@ -136,6 +144,7 @@ class AudioPlayerService extends ChangeNotifier {
 
   // Go to the next track in the queue
   Future<void> next() async {
+    if (_isDisposed) return;
     debugPrint('PLAYER: next() called, currentIndex: $_currentIndex, queueLength: ${_playQueue.length}');
     
     if (_playQueue.isEmpty) {
@@ -173,6 +182,7 @@ class AudioPlayerService extends ChangeNotifier {
 
   // Go to the previous track in the queue
   Future<void> previous() async {
+    if (_isDisposed) return;
     debugPrint('PLAYER: previous() called, currentIndex: $_currentIndex, queueLength: ${_playQueue.length}');
     
     if (_playQueue.isEmpty) {
@@ -217,16 +227,19 @@ class AudioPlayerService extends ChangeNotifier {
 
   // Toggle play/pause
   Future<void> togglePlayPause() async {
+    if (_isDisposed) return;
     await _player.playOrPause();
   }
 
   // Seek to position
   Future<void> seek(Duration position) async {
+    if (_isDisposed) return;
     await _player.seek(position);
   }
 
   // Stop playback
   Future<void> stop() async {
+    if (_isDisposed) return;
     await _player.stop();
     _currentTrack = null;
     _isPlaying = false;
@@ -237,16 +250,30 @@ class AudioPlayerService extends ChangeNotifier {
 
   // Set volume (0.0 to 1.0)
   Future<void> setVolume(double volume) async {
+    if (_isDisposed) return;
     await _player.setVolume(volume * 100); // media_kit uses 0-100
   }
 
   @override
-  void dispose() {
-    _playingSubscription.cancel();
-    _durationSubscription.cancel();
-    _positionSubscription.cancel();
-    _completedSubscription.cancel();
-    _player.dispose();
+  void notifyListeners() {
+    if (!_isDisposed) {
+      super.notifyListeners();
+    }
+  }
+
+  @override
+  Future<void> dispose() async {
+    _isDisposed = true;
+
+    // Cancel all subscriptions first
+    await _playingSubscription.cancel();
+    await _durationSubscription.cancel();
+    await _positionSubscription.cancel();
+    await _completedSubscription.cancel();
+
+    // Dispose player
+    await _player.dispose();
+
     super.dispose();
   }
 }
