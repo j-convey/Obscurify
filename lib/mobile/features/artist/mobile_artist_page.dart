@@ -53,8 +53,6 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
   }
 
   void _onScroll() {
-    // Calculate opacity based on scroll position
-    // Start fading in at 100, fully visible at 200
     if (_scrollController.hasClients) {
       final offset = _scrollController.offset;
       if (offset < 100) {
@@ -71,19 +69,8 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
     setState(() => _isLoading = true);
 
     try {
-      // Load artist details (if available in DB)
-      // This part might need adjustment depending on how you store/fetch detailed artist info
-      // For now, we'll try to find tracks for this artist to get an image
-
-      // Load top tracks for this artist
       final tracks = await _db.tracks.getByArtist(widget.artistId);
-
-      // Sort by popularity or play count if available, otherwise just take the first few
-      // Assuming 'userRating' or similar indicates popularity, or just list them all
-      // Taking top 5 for "Popular" section
       final topTracks = tracks.take(5).toList();
-
-      // Load server info for images/playback
       final token = await _storageService.getPlexToken();
       Map<String, String> urls = {};
       if (token != null) {
@@ -92,12 +79,11 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
 
       Artist? artistDetails;
       if (tracks.isNotEmpty) {
-        // Construct a temporary artist object from the first track if we don't have a dedicated fetch
         artistDetails = Artist(
           ratingKey: widget.artistId,
           name: widget.artistName,
           thumb: tracks.first.artistThumb,
-          art: tracks.first.artistThumb, // Use same image for header if art not available
+          art: tracks.first.artistThumb,
           serverId: tracks.first.serverId,
         );
       }
@@ -130,7 +116,6 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
       return;
     }
 
-    // Set queue with top tracks
     final trackMaps = _topTracks.map((t) => t.toJson()).toList();
     final index = _topTracks.indexOf(track);
 
@@ -142,9 +127,14 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
     );
   }
 
+  Future<void> _playAll() async {
+    if (_topTracks.isNotEmpty) {
+      await _playTrack(_topTracks.first);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Construct artist image URL
     String? artistImageUrl;
     if (_artist?.thumb != null && _currentToken != null && _artist!.serverId.isNotEmpty) {
       final serverUrl = _serverUrls[_artist!.serverId];
@@ -161,9 +151,36 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
             controller: _scrollController,
             slivers: [
               SliverToBoxAdapter(
-                child: ArtistHeader(
-                  artistName: widget.artistName,
-                  imageUrl: artistImageUrl,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    ArtistHeader(
+                      artistName: widget.artistName,
+                      imageUrl: artistImageUrl,
+                    ),
+                    Positioned(
+                      bottom: 8,
+                      right: 16,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              // TODO: Shuffle play
+                            },
+                            icon: const Icon(Icons.shuffle, color: Colors.grey, size: 28),
+                          ),
+                          const SizedBox(width: 8),
+                          FloatingActionButton(
+                            onPressed: _playAll,
+                            backgroundColor: const Color(0xFF1DB954),
+                            shape: const CircleBorder(),
+                            child: const Icon(Icons.play_arrow, color: Colors.black, size: 32),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
               if (_isLoading)
@@ -191,7 +208,6 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final track = _topTracks[index];
-                      // Track image
                       String? trackImageUrl;
                       final serverUrl = _serverUrls[track.serverId];
                       if (track.thumb != null && serverUrl != null && _currentToken != null) {
@@ -208,13 +224,11 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
                     childCount: _topTracks.length,
                   ),
                 ),
-                // Add some bottom padding for the mini player
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
             ],
           ),
 
-          // Custom App Bar
           Positioned(
             top: 0,
             left: 0,
@@ -251,7 +265,7 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 48), // Balance the back button
+                  const SizedBox(width: 48),
                 ],
               ),
             ),
