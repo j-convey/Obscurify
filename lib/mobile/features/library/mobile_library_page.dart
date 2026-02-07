@@ -3,11 +3,17 @@ import '../../../core/database/database_service.dart';
 import '../../../core/models/track.dart';
 import '../../../core/services/plex/plex_services.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/services/audio_player_service.dart';
 import 'widgets/track_options_sheet.dart';
 
 /// Library page for mobile showing all songs from the server.
 class MobileLibraryPage extends StatefulWidget {
-  const MobileLibraryPage({super.key});
+  final AudioPlayerService? audioPlayerService;
+
+  const MobileLibraryPage({
+    super.key,
+    this.audioPlayerService,
+  });
 
   @override
   State<MobileLibraryPage> createState() => _MobileLibraryPageState();
@@ -42,6 +48,9 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
           _currentToken = token;
           _serverUrls = urls;
         });
+        
+        // Provide server URLs to audio player service
+        widget.audioPlayerService?.setServerUrls(urls);
       }
     }
   }
@@ -65,6 +74,29 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
     );
   }
 
+  Future<void> _playTrack(Track track, List<Track> allTracks) async {
+    if (widget.audioPlayerService == null || _currentToken == null) return;
+    
+    final serverUrl = _serverUrls[track.serverId];
+    if (serverUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot play track: Server not found')),
+      );
+      return;
+    }
+
+    // Set queue with all tracks in the list
+    final trackMaps = allTracks.map((t) => t.toJson()).toList();
+    final index = allTracks.indexOf(track);
+    
+    widget.audioPlayerService!.setPlayQueue(trackMaps, index);
+    await widget.audioPlayerService!.playTrack(
+      track.toJson(),
+      _currentToken!,
+      serverUrl,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,45 +117,6 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Wrap(
-                spacing: 8,
-                children: [
-                  FilterChip(
-                    label: const Text('Playlists'),
-                    selected: false,
-                    onSelected: (_) {},
-                    backgroundColor: const Color(0xFF282828),
-                    labelStyle: const TextStyle(color: Colors.white),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  FilterChip(
-                    label: const Text('Artists'),
-                    selected: false,
-                    onSelected: (_) {},
-                    backgroundColor: const Color(0xFF282828),
-                    labelStyle: const TextStyle(color: Colors.white),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  FilterChip(
-                    label: const Text('Albums'),
-                    selected: false,
-                    onSelected: (_) {},
-                    backgroundColor: const Color(0xFF282828),
-                    labelStyle: const TextStyle(color: Colors.white),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _refreshTracks,
@@ -190,9 +183,7 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
                             onPressed: () => _showTrackOptions(context, track, imageUrl),
                           ),
                           onLongPress: () => _showTrackOptions(context, track, imageUrl),
-                          onTap: () {
-                            // TODO: Play track
-                          },
+                          onTap: () => _playTrack(track, tracks),
                         );
                       },
                     );

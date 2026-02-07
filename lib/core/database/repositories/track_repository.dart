@@ -119,7 +119,8 @@ class TrackRepository extends BaseRepository {
   // WRITE OPERATIONS
   // ============================================================
 
-  /// Save tracks with automatic artist/album extraction (optimized with batch operations)
+  /// Save tracks with automatic artist/album extraction (optimized for Mobile)
+  /// Uses batch operations to minimize platform channel overhead.
   Future<void> saveAll(
     String serverId,
     String libraryKey,
@@ -128,83 +129,147 @@ class TrackRepository extends BaseRepository {
   }) async {
     final db = await getDatabase();
     
-    // Use a transaction for much better performance
+    // Use a transaction for performance and integrity
     await db.transaction((txn) async {
-      // Delete existing tracks for this library
+      // 1. Delete existing tracks for this library to prevent duplicates
       await txn.delete(
         'tracks',
         where: 'server_id = ? AND library_key = ?',
         whereArgs: [serverId, libraryKey],
       );
 
-      // Process tracks in batches for progress updates
-      const batchSize = 100;
+      // 2. Identify and Insert Unique Artists
+      // We process all artists first to ensure foreign keys can be resolved
+      final uniqueArtists = <String, Artist>{};
+      for (final track in tracks) {
+        if (track.artistRatingKey != null && 
+            track.artistName.isNotEmpty && 
+            !uniqueArtists.containsKey(track.artistRatingKey)) {
+          uniqueArtists[track.artistRatingKey!] = Artist(
+            ratingKey: track.artistRatingKey!,
+            name: track.artistName,
+            thumb: track.artistThumb,
+            serverId: serverId,
+            addedAt: track.addedAt,
+          );
+        }
+      }
+
+      if (uniqueArtists.isNotEmpty) {
+        final artistBatch = txn.batch();
+        for (final artist in uniqueArtists.values) {
+          artistBatch.insert(
+            'artists', 
+            artist.toDb(), 
+            conflictAlgorithm: ConflictAlgorithm.ignore
+          );
+        }
+        await artistBatch.commit(noResult: true);
+      }
+
+      // 3. Retrieve Artist IDs
+      // We need the internal database IDs to link albums and tracks
+      final artistIds = <String, int>{};
+      if (uniqueArtists.isNotEmpty) {
+        final List<Map<String, dynamic>> results = await txn.query(
+          'artists',
+          columns: ['rating_key', 'id'],
+          where: 'server_id = ?',
+          whereArgs: [serverId],
+        );
+        
+        for (final row in results) {
+          final ratingKey = row['rating_key'] as String;
+          final id = row['id'] as int;
+          artistIds[ratingKey] = id;
+        }
+      }
+
+      // 4. Identify and Insert Unique Albums
+      final uniqueAlbums = <String, Album>{};
+      for (final track in tracks) {
+        if (track.albumRatingKey != null && 
+            track.albumName.isNotEmpty && 
+            !uniqueAlbums.containsKey(track.albumRatingKey)) {
+          
+          final artistId = track.artistRatingKey != null ? artistIds[track.artistRatingKey] : null;
+
+          uniqueAlbums[track.albumRatingKey!] = Album(
+            ratingKey: track.albumRatingKey!,
+            title: track.albumName,
+            artistId: artistId,
+            artistName: track.artistName,
+            thumb: track.albumThumb,
+            year: track.year,
+            serverId: serverId,
+            addedAt: track.addedAt,
+          );
+        }
+      }
+
+      if (uniqueAlbums.isNotEmpty) {
+        final albumBatch = txn.batch();
+        for (final album in uniqueAlbums.values) {
+          albumBatch.insert(
+            'albums', 
+            album.toDb(), 
+            conflictAlgorithm: ConflictAlgorithm.ignore
+          );
+        }
+        await albumBatch.commit(noResult: true);
+      }
+
+      // 5. Retrieve Album IDs
+      final albumIds = <String, int>{};
+      if (uniqueAlbums.isNotEmpty) {
+        final List<Map<String, dynamic>> results = await txn.query(
+          'albums',
+          columns: ['rating_key', 'id'],
+          where: 'server_id = ?',
+          whereArgs: [serverId],
+        );
+        
+        for (final row in results) {
+          final ratingKey = row['rating_key'] as String;
+          final id = row['id'] as int;
+          albumIds[ratingKey] = id;
+        }
+      }
+
+      // 6. Insert Tracks in Batches
+      // Batching here prevents UI freeze on mobile by allowing UI to render between batches
+      const batchSize = 500; 
       for (int batchStart = 0; batchStart < tracks.length; batchStart += batchSize) {
         final batchEnd = (batchStart + batchSize).clamp(0, tracks.length);
         final batch = tracks.sublist(batchStart, batchEnd);
+        
+        final trackBatch = txn.batch();
 
         for (final track in batch) {
           int? artistId;
           int? albumId;
 
-          // Upsert artist
-          if (track.artistRatingKey != null && track.artistName.isNotEmpty) {
-            final artist = Artist(
-              ratingKey: track.artistRatingKey!,
-              name: track.artistName,
-              thumb: track.artistThumb,
-              serverId: serverId,
-              addedAt: track.addedAt,
-            );
-            
-            await txn.insert('artists', artist.toDb(), conflictAlgorithm: ConflictAlgorithm.ignore);
-            
-            final artistResult = await txn.query(
-              'artists',
-              where: 'rating_key = ?',
-              whereArgs: [track.artistRatingKey],
-              limit: 1,
-            );
-            artistId = artistResult.isNotEmpty ? artistResult.first['id'] as int? : null;
+          if (track.artistRatingKey != null) {
+            artistId = artistIds[track.artistRatingKey];
+          }
+          
+          if (track.albumRatingKey != null) {
+            albumId = albumIds[track.albumRatingKey];
           }
 
-          // Upsert album
-          if (track.albumRatingKey != null && track.albumName.isNotEmpty) {
-            final album = Album(
-              ratingKey: track.albumRatingKey!,
-              title: track.albumName,
-              artistId: artistId,
-              artistName: track.artistName,
-              thumb: track.albumThumb,
-              year: track.year,
-              serverId: serverId,
-              addedAt: track.addedAt,
-            );
-            
-            await txn.insert('albums', album.toDb(), conflictAlgorithm: ConflictAlgorithm.ignore);
-            
-            final albumResult = await txn.query(
-              'albums',
-              where: 'rating_key = ?',
-              whereArgs: [track.albumRatingKey],
-              limit: 1,
-            );
-            albumId = albumResult.isNotEmpty ? albumResult.first['id'] as int? : null;
-          }
-
-          // Insert track with foreign keys
           final trackWithFks = track.copyWith(
             artistId: artistId,
             albumId: albumId,
           );
-          await txn.insert('tracks', trackWithFks.toDb());
+          trackBatch.insert('tracks', trackWithFks.toDb());
         }
 
-        // Report progress after each batch
+        await trackBatch.commit(noResult: true);
+
         onProgress?.call(batchEnd, tracks.length);
       }
 
-      // Update sync metadata (use replace to update existing row on re-sync)
+      // 7. Update Sync Metadata
       await txn.insert(
         'sync_metadata',
         {
