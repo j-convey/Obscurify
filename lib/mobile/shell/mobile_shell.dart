@@ -6,6 +6,7 @@ import '../features/library/mobile_library_page.dart';
 import '../features/create/mobile_create_page.dart';
 import 'widgets/profile_drawer.dart';
 import '../features/player/widgets/mobile_mini_player.dart';
+import '../features/player/mobile_player_page.dart';
 
 /// The main shell for the mobile app.
 /// Provides a bottom navigation bar with four tabs.
@@ -50,6 +51,17 @@ class _MobileShellState extends State<MobileShell> {
     super.dispose();
   }
 
+  void _showFullPlayer() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => MobilePlayerPage(
+        audioPlayerService: _audioPlayerService,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,9 +84,7 @@ class _MobileShellState extends State<MobileShell> {
               }
               return MobileMiniPlayer(
                 audioPlayerService: _audioPlayerService,
-                onTap: () {
-                  // TODO: Expand full player
-                },
+                onTap: _showFullPlayer,
               );
             },
           ),
