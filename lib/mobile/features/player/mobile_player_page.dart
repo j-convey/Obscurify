@@ -33,7 +33,7 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> {
   void _handlePlaylistTap(BuildContext context, String trackId, String trackTitle, bool isInPlaylist) async {
     if (isInPlaylist) {
       // Scenario 1: Already in playlist -> Show sheet
-      showModalBottomSheet(
+      await showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
@@ -42,6 +42,8 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> {
           trackTitle: trackTitle,
         ),
       );
+      // Refresh status after sheet closes
+      widget.audioPlayerService.refreshPlaylistStatus();
     } else {
       // Scenario 2: Not in playlist -> Add to Liked Songs
       try {
@@ -60,11 +62,9 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> {
 
         await _db.playlists.addTrack(likedPlaylist.id, trackId);
         
-        // Force update UI
-        // Ideally AudioPlayerService listens to DB, but for now we rely on re-check
-        // Since we modify DB directly, the service loop might pick it up next check
-        // Or we trigger a check manually if exposed.
-        // For simple UI feedback:
+        // Refresh status immediately
+        widget.audioPlayerService.refreshPlaylistStatus();
+        
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -72,8 +72,8 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> {
               action: SnackBarAction(
                 label: 'Change',
                 textColor: Colors.green,
-                onPressed: () {
-                  showModalBottomSheet(
+                onPressed: () async {
+                  await showModalBottomSheet(
                     context: context,
                     backgroundColor: Colors.transparent,
                     isScrollControlled: true,
@@ -82,6 +82,8 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> {
                       trackTitle: trackTitle,
                     ),
                   );
+                  // Refresh again
+                  widget.audioPlayerService.refreshPlaylistStatus();
                 },
               ),
             ),

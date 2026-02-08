@@ -65,6 +65,7 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
   void _showTrackOptions(BuildContext context, Track track, String? imageUrl) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true, // Show over everything including mini player
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => TrackOptionsSheet(

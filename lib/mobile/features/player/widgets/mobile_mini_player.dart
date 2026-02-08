@@ -18,7 +18,7 @@ class MobileMiniPlayer extends StatelessWidget {
     final db = DatabaseService();
     
     if (isInPlaylist) {
-      showModalBottomSheet(
+      await showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
@@ -27,6 +27,8 @@ class MobileMiniPlayer extends StatelessWidget {
           trackTitle: trackTitle,
         ),
       );
+      // Refresh status after sheet closes (user might have removed track)
+      audioPlayerService.refreshPlaylistStatus();
     } else {
       try {
         Playlist? likedPlaylist = await db.playlists.getByTitle('Liked Songs');
@@ -43,6 +45,9 @@ class MobileMiniPlayer extends StatelessWidget {
 
         await db.playlists.addTrack(likedPlaylist.id, trackId);
         
+        // Refresh status immediately so icon turns green
+        audioPlayerService.refreshPlaylistStatus();
+        
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -50,8 +55,8 @@ class MobileMiniPlayer extends StatelessWidget {
               action: SnackBarAction(
                 label: 'Change',
                 textColor: Colors.green,
-                onPressed: () {
-                  showModalBottomSheet(
+                onPressed: () async {
+                  await showModalBottomSheet(
                     context: context,
                     backgroundColor: Colors.transparent,
                     isScrollControlled: true,
@@ -60,6 +65,8 @@ class MobileMiniPlayer extends StatelessWidget {
                       trackTitle: trackTitle,
                     ),
                   );
+                  // Refresh again after sheet closes
+                  audioPlayerService.refreshPlaylistStatus();
                 },
               ),
             ),

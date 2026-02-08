@@ -109,6 +109,11 @@ class AudioPlayerService extends ChangeNotifier {
     }
   }
 
+  // Public method to force refresh playlist status
+  void refreshPlaylistStatus() {
+    _checkPlaylistStatus();
+  }
+
   // Play a track
   Future<void> playTrack(
       Map<String, dynamic> track, String token, String serverUrl) async {
