@@ -187,7 +187,7 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> {
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.4),
+                            color: Colors.black.withAlpha((255 * 0.4).round()),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -298,7 +298,7 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> {
                           activeTrackColor: Colors.white,
                           inactiveTrackColor: Colors.white24,
                           thumbColor: Colors.white,
-                          overlayColor: Colors.white.withOpacity(0.1),
+                          overlayColor: Colors.white.withAlpha((255 * 0.1).round()),
                         ),
                         child: Slider(
                           value: sliderValue.clamp(0.0, maxDuration),

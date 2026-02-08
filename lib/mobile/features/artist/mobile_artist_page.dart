@@ -28,13 +28,13 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
   final DatabaseService _db = DatabaseService();
   final PlexServerService _serverService = PlexServerService();
   final StorageService _storageService = StorageService();
-
+  
   List<Track> _topTracks = [];
   Artist? _artist;
   bool _isLoading = true;
   String? _currentToken;
   Map<String, String> _serverUrls = {};
-
+  
   // For scrolling app bar effect
   final ScrollController _scrollController = ScrollController();
   double _opacity = 0.0;
@@ -67,7 +67,7 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-
+    
     try {
       final tracks = await _db.tracks.getByArtist(widget.artistId);
       final topTracks = tracks.take(5).toList();
@@ -76,7 +76,7 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
       if (token != null) {
         urls = await _serverService.fetchServerUrlMap(token);
       }
-
+      
       Artist? artistDetails;
       if (tracks.isNotEmpty) {
         artistDetails = Artist(
@@ -107,7 +107,7 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
 
   Future<void> _playTrack(Track track) async {
     if (widget.audioPlayerService == null || _currentToken == null) return;
-
+    
     final serverUrl = _serverUrls[track.serverId];
     if (serverUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -118,7 +118,7 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
 
     final trackMaps = _topTracks.map((t) => t.toJson()).toList();
     final index = _topTracks.indexOf(track);
-
+    
     widget.audioPlayerService!.setPlayQueue(trackMaps, index);
     await widget.audioPlayerService!.playTrack(
       track.toJson(),
@@ -135,12 +135,10 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
 
   @override
   Widget build(BuildContext context) {
-    String? artistImageUrl;
-    if (_artist?.thumb != null && _currentToken != null && _artist!.serverId.isNotEmpty) {
-      final serverUrl = _serverUrls[_artist!.serverId];
-      if (serverUrl != null) {
-        artistImageUrl = '$serverUrl${_artist!.thumb!}?X-Plex-Token=$_currentToken';
-      }
+    // Determine server URL for artist image
+    String? artistServerUrl;
+    if (_artist?.serverId.isNotEmpty == true) {
+      artistServerUrl = _serverUrls[_artist!.serverId];
     }
 
     return Scaffold(
@@ -156,7 +154,9 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
                   children: [
                     ArtistHeader(
                       artistName: widget.artistName,
-                      imageUrl: artistImageUrl,
+                      serverUrl: artistServerUrl,
+                      token: _currentToken,
+                      thumbPath: _artist?.thumb,
                     ),
                     Positioned(
                       bottom: 8,
@@ -208,16 +208,13 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final track = _topTracks[index];
-                      String? trackImageUrl;
                       final serverUrl = _serverUrls[track.serverId];
-                      if (track.thumb != null && serverUrl != null && _currentToken != null) {
-                        trackImageUrl = '$serverUrl${track.thumb!}?X-Plex-Token=$_currentToken';
-                      }
 
                       return ArtistPopularTrackItem(
                         index: index + 1,
                         track: track,
-                        imageUrl: trackImageUrl,
+                        serverUrl: serverUrl,
+                        token: _currentToken,
                         onTap: () => _playTrack(track),
                       );
                     },
@@ -228,14 +225,14 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
               ],
             ],
           ),
-
+          
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: Container(
               height: kToolbarHeight + MediaQuery.of(context).padding.top,
-              color: const Color(0xFF121212).withOpacity(_opacity),
+              color: const Color(0xFF121212).withValues(alpha: _opacity),
               padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
               child: Row(
                 children: [
@@ -243,7 +240,7 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
                     icon: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5 * (1 - _opacity)),
+                        color: Colors.black.withValues(alpha: 0.5 * (1 - _opacity)),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.arrow_back, color: Colors.white),

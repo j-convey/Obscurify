@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../../core/models/track.dart';
+import '../../../shared/widgets/plex_image.dart';
 
 class TrackOptionsSheet extends StatelessWidget {
   final Track track;
-  final String? imageUrl;
+  final String? serverUrl;
+  final String? token;
 
   const TrackOptionsSheet({
     super.key,
     required this.track,
-    this.imageUrl,
+    this.serverUrl,
+    this.token,
   });
 
   @override
@@ -39,17 +42,13 @@ class TrackOptionsSheet extends StatelessWidget {
             padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
-                ClipRRect(
+                PlexImage(
+                  serverUrl: serverUrl,
+                  token: token,
+                  thumbPath: track.thumb ?? track.albumThumb,
+                  width: 56,
+                  height: 56,
                   borderRadius: BorderRadius.circular(4),
-                  child: imageUrl != null
-                      ? Image.network(
-                          imageUrl!,
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildPlaceholder(),
-                        )
-                      : _buildPlaceholder(),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -126,15 +125,6 @@ class TrackOptionsSheet extends StatelessWidget {
           const SizedBox(height: 32), // Bottom padding
         ],
       ),
-    );
-  }
-
-  Widget _buildPlaceholder() {
-    return Container(
-      width: 56,
-      height: 56,
-      color: const Color(0xFF282828),
-      child: const Icon(Icons.music_note, color: Colors.grey),
     );
   }
 

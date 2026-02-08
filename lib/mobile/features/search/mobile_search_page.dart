@@ -4,6 +4,8 @@ import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/audio_player_service.dart';
 import '../../../../core/models/track.dart';
 import '../artist/mobile_artist_page.dart';
+import '../../shared/widgets/plex_image.dart';
+import '../../shared/widgets/track_tile.dart';
 
 class MobileSearchPage extends StatefulWidget {
   final AudioPlayerService? audioPlayerService;
@@ -72,8 +74,11 @@ class _MobileSearchPageState extends State<MobileSearchPage> {
     // Search tracks (returns Track objects directly from new repo)
     final trackResults = await _dbService.tracks.search(query);
     
-    // Search artists (returns Map, need to adapt if we want full objects)
-    final artistResults = await _dbService.searchArtists(query);
+    // Search artists (returns List<Artist>)
+    final artistResultsObjects = await _dbService.artists.search(query);
+    
+    // Convert to Maps to satisfy the type of _artistResults
+    final artistResults = artistResultsObjects.map((a) => a.toJson()).toList();
 
     if (mounted) {
       setState(() {
@@ -200,27 +205,19 @@ class _MobileSearchPageState extends State<MobileSearchPage> {
           ..._artistResults.map((artist) {
             // Determine image URL
             final thumb = artist['thumb'] as String?;
-            final serverId = artist['serverId'] as String?; // Might be null in search results
-            String? imageUrl;
+            final serverId = artist['serverId'] as String? ?? artist['server_id'] as String?;
             
-            // Try to find server URL if serverId is present, else loop/guess or use first available?
-            // Search results usually contain serverId.
-            if (thumb != null && _token != null) {
-               // If serverId is missing from search result view, we might have issue. 
-               // Assuming single server or finding first match for now if simple.
-               // Actually, DB search results should have server_id
-               final sId = artist['server_id'] as String? ?? serverId;
-               final url = _serverUrls[sId];
-               if (url != null) {
-                 imageUrl = '$url$thumb?X-Plex-Token=$_token';
-               }
-            }
+            final url = serverId != null ? _serverUrls[serverId] : null;
 
             return ListTile(
-              leading: CircleAvatar(
-                backgroundColor: const Color(0xFF282828),
-                backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
-                child: imageUrl == null ? const Icon(Icons.person, color: Colors.grey) : null,
+              leading: PlexImage(
+                serverUrl: url,
+                token: _token,
+                thumbPath: thumb,
+                placeholderIcon: Icons.person,
+                shape: BoxShape.circle,
+                width: 40,
+                height: 40,
               ),
               title: Text(
                 artist['name'] as String? ?? artist['title'] as String? ?? 'Unknown',
@@ -244,41 +241,10 @@ class _MobileSearchPageState extends State<MobileSearchPage> {
           const SizedBox(height: 8),
           ..._trackResults.map((track) {
             final serverUrl = _serverUrls[track.serverId];
-            final imageUrl = track.thumb != null && serverUrl != null && _token != null
-                ? '$serverUrl${track.thumb!}?X-Plex-Token=$_token'
-                : null;
-
-            return ListTile(
-              leading: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF282828),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: imageUrl != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.music_note, color: Colors.grey),
-                        ),
-                      )
-                    : const Icon(Icons.music_note, color: Colors.grey),
-              ),
-              title: Text(
-                track.title,
-                style: const TextStyle(color: Colors.white),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                track.artistName,
-                style: const TextStyle(color: Colors.grey),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+            return TrackTile(
+              track: track,
+              serverUrl: serverUrl,
+              token: _token,
               onTap: () => _playTrack(track),
             );
           }),

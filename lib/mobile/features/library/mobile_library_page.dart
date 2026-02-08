@@ -5,6 +5,7 @@ import '../../../core/services/plex/plex_services.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/audio_player_service.dart';
 import 'widgets/track_options_sheet.dart';
+import '../../shared/widgets/track_tile.dart';
 
 /// Library page for mobile showing all songs from the server.
 class MobileLibraryPage extends StatefulWidget {
@@ -62,7 +63,7 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
     await _loadServerUrls();
   }
 
-  void _showTrackOptions(BuildContext context, Track track, String? imageUrl) {
+  void _showTrackOptions(BuildContext context, Track track, String? serverUrl) {
     showModalBottomSheet(
       context: context,
       useRootNavigator: true, // Show over everything including mini player
@@ -70,7 +71,8 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
       isScrollControlled: true,
       builder: (context) => TrackOptionsSheet(
         track: track,
-        imageUrl: imageUrl,
+        serverUrl: serverUrl,
+        token: _currentToken,
       ),
     );
   }
@@ -144,46 +146,16 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
                       itemBuilder: (context, index) {
                         final track = tracks[index];
                         final serverUrl = _serverUrls[track.serverId];
-                        final imageUrl = track.albumThumb != null && serverUrl != null && _currentToken != null
-                            ? '$serverUrl${track.albumThumb!}?X-Plex-Token=$_currentToken'
-                            : null;
 
-                        return ListTile(
-                          leading: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF282828),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: imageUrl != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: Image.network(
-                                      imageUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => const Icon(Icons.music_note, color: Colors.grey),
-                                    ),
-                                  )
-                                : const Icon(Icons.music_note, color: Colors.grey),
-                          ),
-                          title: Text(
-                            track.title,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            '${track.artistName} • ${track.albumName}',
-                            style: const TextStyle(color: Colors.grey, fontSize: 13),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                        return TrackTile(
+                          track: track,
+                          serverUrl: serverUrl,
+                          token: _currentToken,
                           trailing: IconButton(
                             icon: const Icon(Icons.more_vert, color: Colors.grey),
-                            onPressed: () => _showTrackOptions(context, track, imageUrl),
+                            onPressed: () => _showTrackOptions(context, track, serverUrl),
                           ),
-                          onLongPress: () => _showTrackOptions(context, track, imageUrl),
+                          onLongPress: () => _showTrackOptions(context, track, serverUrl),
                           onTap: () => _playTrack(track, tracks),
                         );
                       },

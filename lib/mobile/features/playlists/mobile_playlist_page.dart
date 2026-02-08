@@ -66,8 +66,6 @@ class _MobilePlaylistPageState extends State<MobilePlaylistPage> {
 
     try {
       // Load playlist tracks
-      // Using repository directly if available, otherwise might need custom query
-      // PlaylistRepository usually has a getTracks method
       final tracks = await _db.playlists.getTracks(widget.playlist.id);
       
       final token = await _storageService.getPlexToken();
@@ -120,14 +118,15 @@ class _MobilePlaylistPageState extends State<MobilePlaylistPage> {
     }
   }
 
-  void _showTrackOptions(Track track, String? imageUrl) {
+  void _showTrackOptions(Track track, String? serverUrl) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => TrackOptionsSheet(
         track: track,
-        imageUrl: imageUrl,
+        serverUrl: serverUrl,
+        token: _currentToken,
       ),
     );
   }
@@ -161,7 +160,7 @@ class _MobilePlaylistPageState extends State<MobilePlaylistPage> {
                           ? Image.network(
                               playlistImageUrl,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(color: Colors.grey[900]),
+                              errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey[900]),
                             )
                           : Container(color: Colors.grey[900]),
                       
@@ -172,7 +171,7 @@ class _MobilePlaylistPageState extends State<MobilePlaylistPage> {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.black.withOpacity(0.3),
+                              Colors.black.withValues(alpha: 0.3),
                               const Color(0xFF121212),
                             ],
                           ),
@@ -254,7 +253,7 @@ class _MobilePlaylistPageState extends State<MobilePlaylistPage> {
                                   child: Image.network(
                                     trackImageUrl,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(Icons.music_note, color: Colors.grey),
+                                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.music_note, color: Colors.grey),
                                   ),
                                 )
                               : const Icon(Icons.music_note, color: Colors.grey),
@@ -273,7 +272,7 @@ class _MobilePlaylistPageState extends State<MobilePlaylistPage> {
                         ),
                         trailing: IconButton(
                           icon: const Icon(Icons.more_vert, color: Colors.grey),
-                          onPressed: () => _showTrackOptions(track, trackImageUrl),
+                          onPressed: () => _showTrackOptions(track, serverUrl),
                         ),
                         onTap: () => _playTrack(track),
                       );
@@ -293,7 +292,7 @@ class _MobilePlaylistPageState extends State<MobilePlaylistPage> {
             right: 0,
             child: Container(
               height: kToolbarHeight + MediaQuery.of(context).padding.top,
-              color: const Color(0xFF121212).withOpacity(_opacity),
+              color: const Color(0xFF121212).withValues(alpha: _opacity),
               padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
               child: Row(
                 children: [
@@ -301,7 +300,7 @@ class _MobilePlaylistPageState extends State<MobilePlaylistPage> {
                     icon: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5 * (1 - _opacity)),
+                        color: Colors.black.withValues(alpha: 0.5 * (1 - _opacity)),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.arrow_back, color: Colors.white),

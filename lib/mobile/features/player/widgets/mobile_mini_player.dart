@@ -109,7 +109,7 @@ class MobileMiniPlayer extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withAlpha((255 * 0.3).round()),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),

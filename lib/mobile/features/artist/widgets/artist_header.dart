@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/plex_image.dart';
 
 class ArtistHeader extends StatelessWidget {
   final String artistName;
-  final String? imageUrl;
+  final String? serverUrl;
+  final String? token;
+  final String? thumbPath;
 
   const ArtistHeader({
     super.key,
     required this.artistName,
-    this.imageUrl,
+    this.serverUrl,
+    this.token,
+    this.thumbPath,
   });
 
   @override
@@ -18,13 +23,16 @@ class ArtistHeader extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           // Background Image
-          imageUrl != null
-              ? Image.network(
-                  imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(color: Colors.grey[900]),
-                )
-              : Container(color: Colors.grey[900]),
+          PlexImage(
+            serverUrl: serverUrl,
+            token: token,
+            thumbPath: thumbPath,
+            width: double.infinity,
+            height: 300,
+            fit: BoxFit.cover,
+            borderRadius: BorderRadius.zero,
+            placeholderIcon: Icons.person,
+          ),
           
           // Gradient Overlay
           Container(

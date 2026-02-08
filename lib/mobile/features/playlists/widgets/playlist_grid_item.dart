@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/models/playlist.dart';
+import '../../../shared/widgets/plex_image.dart';
 
 class PlaylistGridItem extends StatelessWidget {
   final Playlist playlist;
@@ -31,9 +32,11 @@ class PlaylistGridItem extends StatelessWidget {
                   color: Colors.grey[800],
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: ClipRRect(
+                child: PlexImage(
+                  serverUrl: serverUrl,
+                  token: token,
+                  thumbPath: playlist.composite,
                   borderRadius: BorderRadius.circular(8),
-                  child: _buildImage(),
                 ),
               ),
             ),
@@ -60,32 +63,6 @@ class PlaylistGridItem extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildImage() {
-    if (playlist.composite != null && serverUrl != null && token != null) {
-      return Image.network(
-        '$serverUrl${playlist.composite}?X-Plex-Token=$token',
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildPlaceholder();
-        },
-      );
-    }
-    return _buildPlaceholder();
-  }
-
-  Widget _buildPlaceholder() {
-    return Container(
-      color: Colors.grey[800],
-      child: const Center(
-        child: Icon(
-          Icons.music_note,
-          color: Colors.grey,
-          size: 48,
-        ),
       ),
     );
   }

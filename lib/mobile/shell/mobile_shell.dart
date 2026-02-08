@@ -140,11 +140,48 @@ class _MobileShellState extends State<MobileShell> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
         // Check if the current navigator can pop. If it can, pop it and don't exit the app.
-        final canPop = await _navigatorKeys[_currentIndex].currentState?.maybePop() ?? false;
-        return !canPop;
+        final navigator = _navigatorKeys[_currentIndex].currentState;
+        if (navigator != null && navigator.canPop()) {
+          navigator.pop();
+        } else {
+          // If the nested navigator can't pop, allow the app to exit? 
+          // Since we are in the main shell, typically back button exits the app on Android.
+          // However, Flutter's PopScope with canPop: false prevents that unless we handle it.
+          // If we want to exit, we need a way to do it.
+          // For now, let's assume standard behavior: if at root of tab, back button exits app (or moves to background).
+          // But PopScope canPop: false disables system back.
+          // To allow system back when no nested pop, we should set canPop dynamically? No, that's deprecated WillPopScope behavior.
+          // With PopScope, if we want to allow exit, we usually don't use it or use system navigator.
+          // But we need it for nested nav.
+          // Actually, `maybePop` on navigator returns a Future<bool>.
+          // If we want to exit app, we can use SystemNavigator.pop().
+          // Or we can just not intercept if at root.
+          // But determining if at root synchronously for `canPop` is hard.
+          // The pattern for nested nav with PopScope usually involves checking the navigator.
+          
+          // If we are here, it means we can't pop the nested navigator.
+          // Let's defer to system back behavior by not doing anything (effectively blocking) 
+          // OR we can minimize app? 
+          // Actually, if we are at the root of the app, maybe we should let it pop?
+          // Since this is the Shell, popping it exits the app.
+          // So if we can't pop nested, we should probably allow the pop.
+          // But `canPop: false` prevents it.
+          
+          // Simpler: Use WillPopScope logic but adapted? No, deprecated.
+          // Let's try to just pop the shell if nested can't pop.
+          // But `canPop` must be known beforehand.
+          
+          // For now, I will stick to handling the nested pop. 
+          // If nested pop fails, I will manually pop the context (which exits app).
+          if (context.mounted) {
+             Navigator.of(context).pop();
+          }
+        }
       },
       child: Scaffold(
         key: _scaffoldKey,
@@ -181,7 +218,7 @@ class _MobileShellState extends State<MobileShell> {
                 ),
               ),
               child: NavigationBar(
-                backgroundColor: const Color(0xFF121212).withOpacity(0.90),
+                backgroundColor: const Color(0xFF121212).withValues(alpha: 0.90),
                 indicatorColor: Colors.transparent,
                 surfaceTintColor: Colors.transparent,
                 selectedIndex: _currentIndex,

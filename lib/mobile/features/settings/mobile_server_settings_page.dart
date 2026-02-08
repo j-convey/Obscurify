@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:apollo/core/services/plex/plex_services.dart';
 import 'package:apollo/core/services/storage_service.dart';
 import 'package:apollo/core/database/database_service.dart';
+import 'package:apollo/core/models/track.dart';
 
 class MobileServerSettingsPage extends StatefulWidget {
   const MobileServerSettingsPage({super.key});
@@ -65,8 +66,8 @@ class _MobileServerSettingsPageState extends State<MobileServerSettingsPage> {
 
   Future<void> _loadSyncStatus() async {
     try {
-      final syncMetadata = await _dbService.getAllSyncMetadata();
-      final trackCount = await _dbService.getTrackCount();
+      final syncMetadata = await _dbService.tracks.getAllSyncMetadata();
+      final trackCount = await _dbService.tracks.getCount();
       
       if (syncMetadata.isNotEmpty) {
         final lastSync = syncMetadata.first['last_sync'] as int;
@@ -142,11 +143,14 @@ class _MobileServerSettingsPageState extends State<MobileServerSettingsPage> {
 
               debugPrint('Fetching library $libraryKey from server ${server.machineIdentifier}...');
               
-              final tracks = await _libraryService.getTracks(token, serverUrl, libraryKey);
+              final tracksJson = await _libraryService.getTracks(token, serverUrl, libraryKey);
               
-              final tracksWithServerId = tracks.map((track) {
-                track['serverId'] = server.machineIdentifier;
-                return track;
+              final tracks = tracksJson.map((json) {
+                return Track.fromPlexJson(
+                  json,
+                  serverId: server.machineIdentifier,
+                  libraryKey: libraryKey,
+                );
               }).toList();
               
               if (!mounted) return;
@@ -157,10 +161,10 @@ class _MobileServerSettingsPageState extends State<MobileServerSettingsPage> {
               
               debugPrint('Saving ${tracks.length} tracks from library $libraryKey...');
               
-              await _dbService.saveTracks(
+              await _dbService.tracks.saveAll(
                 server.machineIdentifier,
                 libraryKey,
-                tracksWithServerId,
+                tracks,
                 onProgress: (current, total) {
                   if (mounted) {
                     setState(() {

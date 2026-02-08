@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:apollo/core/models/artist.dart';
+import '../../../shared/widgets/plex_image.dart';
 
 class ArtistGridItem extends StatelessWidget {
   final Artist artist;
@@ -25,8 +26,12 @@ class ArtistGridItem extends StatelessWidget {
           Expanded(
             child: AspectRatio(
               aspectRatio: 1,
-              child: ClipOval(
-                child: _buildImage(),
+              child: PlexImage(
+                serverUrl: serverUrl,
+                token: token,
+                thumbPath: artist.thumb,
+                placeholderIcon: Icons.person,
+                shape: BoxShape.circle,
               ),
             ),
           ),
@@ -54,32 +59,6 @@ class ArtistGridItem extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildImage() {
-    if (artist.thumb != null && serverUrl != null && token != null) {
-      return Image.network(
-        '$serverUrl${artist.thumb}?X-Plex-Token=$token',
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildPlaceholder();
-        },
-      );
-    }
-    return _buildPlaceholder();
-  }
-
-  Widget _buildPlaceholder() {
-    return Container(
-      color: Colors.grey[800],
-      child: const Center(
-        child: Icon(
-          Icons.person,
-          color: Colors.grey,
-          size: 48,
-        ),
       ),
     );
   }
