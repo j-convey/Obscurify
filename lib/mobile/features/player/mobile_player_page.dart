@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../core/services/audio_player_service.dart';
+import '../playlists/widgets/add_to_playlist_sheet.dart';
+import '../../../../core/database/database_service.dart';
+import '../../../../core/models/playlist.dart';
 
 class MobilePlayerPage extends StatefulWidget {
   final AudioPlayerService audioPlayerService;
@@ -18,12 +21,78 @@ class MobilePlayerPage extends StatefulWidget {
 class _MobilePlayerPageState extends State<MobilePlayerPage> {
   bool _isDragging = false;
   double _dragValue = 0.0;
+  final DatabaseService _db = DatabaseService();
 
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
     final minutes = duration.inMinutes;
     return '$minutes:$twoDigitSeconds';
+  }
+
+  void _handlePlaylistTap(BuildContext context, String trackId, String trackTitle, bool isInPlaylist) async {
+    if (isInPlaylist) {
+      // Scenario 1: Already in playlist -> Show sheet
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (context) => AddToPlaylistSheet(
+          trackId: trackId,
+          trackTitle: trackTitle,
+        ),
+      );
+    } else {
+      // Scenario 2: Not in playlist -> Add to Liked Songs
+      try {
+        Playlist? likedPlaylist = await _db.playlists.getByTitle('Liked Songs');
+        if (likedPlaylist == null) {
+          // Create "Liked Songs"
+          final newId = 'local_liked_${DateTime.now().millisecondsSinceEpoch}';
+          likedPlaylist = Playlist(
+            id: newId,
+            title: 'Liked Songs',
+            smart: false,
+            serverId: '',
+          );
+          await _db.playlists.save(likedPlaylist);
+        }
+
+        await _db.playlists.addTrack(likedPlaylist.id, trackId);
+        
+        // Force update UI
+        // Ideally AudioPlayerService listens to DB, but for now we rely on re-check
+        // Since we modify DB directly, the service loop might pick it up next check
+        // Or we trigger a check manually if exposed.
+        // For simple UI feedback:
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Added to Liked Songs'),
+              action: SnackBarAction(
+                label: 'Change',
+                textColor: Colors.green,
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    isScrollControlled: true,
+                    builder: (context) => AddToPlaylistSheet(
+                      trackId: trackId,
+                      trackTitle: trackTitle,
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      }
+    }
   }
 
   @override
@@ -161,7 +230,6 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> {
                             GestureDetector(
                               onTap: () {
                                 if (widget.onArtistTap != null) {
-                                  // Prefer grandparentRatingKey (Artist ID), fallback to empty string if not found
                                   final artistId = track['grandparentRatingKey']?.toString() ?? '';
                                   final artistName = track['artist'] ?? track['grandparentTitle'] ?? 'Unknown Artist';
                                   if (artistId.isNotEmpty) {
@@ -183,24 +251,32 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> {
                         ),
                       ),
                       
-                      // Playlist Status Icon
-                      isInPlaylist
-                          ? Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.green,
-                                shape: BoxShape.circle,
+                      // Playlist Status Icon (Clickable)
+                      GestureDetector(
+                        onTap: () => _handlePlaylistTap(
+                          context, 
+                          track['ratingKey']?.toString() ?? '',
+                          track['title'] ?? '',
+                          isInPlaylist
+                        ),
+                        child: isInPlaylist
+                            ? Container(
+                                decoration: const BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                                padding: const EdgeInsets.all(4),
+                                child: const Icon(Icons.check, color: Colors.black, size: 20),
+                              )
+                            : Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                padding: const EdgeInsets.all(4),
+                                child: const Icon(Icons.add, color: Colors.white, size: 20),
                               ),
-                              padding: const EdgeInsets.all(4),
-                              child: const Icon(Icons.check, color: Colors.black, size: 20),
-                            )
-                          : Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
-                              ),
-                              padding: const EdgeInsets.all(4),
-                              child: const Icon(Icons.add, color: Colors.white, size: 20),
-                            ),
+                      ),
                     ],
                   ),
                 ),

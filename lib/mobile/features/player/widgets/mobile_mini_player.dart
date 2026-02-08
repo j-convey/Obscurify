@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../core/services/audio_player_service.dart';
+import '../../../../core/database/database_service.dart';
+import '../../../../core/models/playlist.dart';
+import '../../playlists/widgets/add_to_playlist_sheet.dart';
 
 class MobileMiniPlayer extends StatelessWidget {
   final AudioPlayerService audioPlayerService;
@@ -10,6 +13,65 @@ class MobileMiniPlayer extends StatelessWidget {
     required this.audioPlayerService,
     this.onTap,
   });
+
+  void _handlePlaylistTap(BuildContext context, String trackId, String trackTitle, bool isInPlaylist) async {
+    final db = DatabaseService();
+    
+    if (isInPlaylist) {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (context) => AddToPlaylistSheet(
+          trackId: trackId,
+          trackTitle: trackTitle,
+        ),
+      );
+    } else {
+      try {
+        Playlist? likedPlaylist = await db.playlists.getByTitle('Liked Songs');
+        if (likedPlaylist == null) {
+          final newId = 'local_liked_${DateTime.now().millisecondsSinceEpoch}';
+          likedPlaylist = Playlist(
+            id: newId,
+            title: 'Liked Songs',
+            smart: false,
+            serverId: '',
+          );
+          await db.playlists.save(likedPlaylist);
+        }
+
+        await db.playlists.addTrack(likedPlaylist.id, trackId);
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Added to Liked Songs'),
+              action: SnackBarAction(
+                label: 'Change',
+                textColor: Colors.green,
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    isScrollControlled: true,
+                    builder: (context) => AddToPlaylistSheet(
+                      trackId: trackId,
+                      trackTitle: trackTitle,
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,25 +192,33 @@ class MobileMiniPlayer extends StatelessWidget {
                     const SizedBox(width: 16),
                     
                     // Playlist Status Icon
-                    isInPlaylist
-                        ? Container(
-                            decoration: const BoxDecoration(
-                              color: Colors.green,
-                              shape: BoxShape.circle,
+                    GestureDetector(
+                      onTap: () => _handlePlaylistTap(
+                        context,
+                        track['ratingKey']?.toString() ?? '',
+                        track['title'] ?? '',
+                        isInPlaylist,
+                      ),
+                      child: isInPlaylist
+                          ? Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                              ),
+                              width: 24,
+                              height: 24,
+                              child: const Icon(Icons.check, color: Colors.black, size: 16),
+                            )
+                          : Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              width: 24,
+                              height: 24,
+                              child: const Icon(Icons.add, color: Colors.white, size: 16),
                             ),
-                            width: 24,
-                            height: 24,
-                            child: const Icon(Icons.check, color: Colors.black, size: 16),
-                          )
-                        : Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            width: 24,
-                            height: 24,
-                            child: const Icon(Icons.add, color: Colors.white, size: 16),
-                          ),
+                    ),
 
                     const SizedBox(width: 16),
                     IconButton(
