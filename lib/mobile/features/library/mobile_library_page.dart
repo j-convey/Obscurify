@@ -34,6 +34,7 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
   Map<String, String> _serverUrls = {};
   bool _isShuffleOn = false;
   SortOption _currentSort = SortOption.recentlyAdded;
+  List<Track>? _cachedSortedTracks;
 
   @override
   void initState() {
@@ -70,6 +71,7 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
   }
 
   Future<void> _refreshTracks() async {
+    _cachedSortedTracks = null; // Clear cache when tracks refresh
     setState(() {
       _loadTracks();
     });
@@ -135,21 +137,30 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
   void _showSortSheet() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => SortBottomSheet(
         currentSort: _currentSort,
         onSortChanged: (option) {
-          setState(() {
+          if (_currentSort != option) {
             _currentSort = option;
-          });
+            _cachedSortedTracks = null; // Clear cache to trigger re-sort
+            setState(() {});
+          }
         },
       ),
     );
   }
 
-  /// Sort tracks based on current sort option
-  List<Track> _sortTracks(List<Track> tracks) {
+  /// Sort tracks based on current sort option (with caching)
+  List<Track> _getSortedTracks(List<Track> tracks) {
+    // Return cached result if available
+    if (_cachedSortedTracks != null) {
+      return _cachedSortedTracks!;
+    }
+
+    // Sort and cache
     final sorted = List<Track>.from(tracks);
     
     switch (_currentSort) {
@@ -181,6 +192,7 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
         break;
     }
     
+    _cachedSortedTracks = sorted;
     return sorted;
   }
 
@@ -207,7 +219,7 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
             );
           }
 
-          final tracks = _sortTracks(snapshot.data!);
+          final tracks = _getSortedTracks(snapshot.data!);
           final genres = _extractGenres(tracks);
           // Grab the first track's thumb as header artwork
           final firstTrack = tracks.first;
