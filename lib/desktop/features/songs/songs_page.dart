@@ -1,29 +1,21 @@
 import 'package:flutter/material.dart';
-<<<<<<<< HEAD:lib/features/library/library_page.dart
-import '../../core/services/storage_service.dart';
-import '../../core/services/audio_player_service.dart';
-import '../../../core/database/database_service.dart';
-import '../collection/collection_page.dart';
-import '../collection/widgets/collection_header.dart';
-========
 import 'package:obscurify/core/services/plex/plex_services.dart';
 import 'package:obscurify/core/services/storage_service.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/database/database_service.dart';
 import 'package:obscurify/desktop/features/collection/collection_page.dart';
 import 'package:obscurify/desktop/features/collection/widgets/collection_header.dart';
->>>>>>>> file-structure-refactor:lib/desktop/features/songs/songs_page.dart
 
-/// Library page that displays the user's entire library.
+/// Songs page that displays the user's entire library.
 /// Uses the reusable CollectionPage component.
-class LibraryPage extends StatefulWidget {
+class SongsPage extends StatefulWidget {
   final AudioPlayerService? audioPlayerService;
   final void Function(Widget)? onNavigate;
   final VoidCallback? onHomeTap;
   final VoidCallback? onSettingsTap;
   final VoidCallback? onProfileTap;
-
-  const LibraryPage({
+  
+  const SongsPage({
     super.key,
     this.audioPlayerService,
     this.onNavigate,
@@ -33,13 +25,14 @@ class LibraryPage extends StatefulWidget {
   });
 
   @override
-  State<LibraryPage> createState() => _LibraryPageState();
+  State<SongsPage> createState() => _SongsPageState();
 }
 
-class _LibraryPageState extends State<LibraryPage> {
+class _SongsPageState extends State<SongsPage> {
+  final PlexServerService _serverService = PlexServerService();
   final StorageService _storageService = StorageService();
   final DatabaseService _dbService = DatabaseService();
-
+  
   List<Map<String, dynamic>> _tracks = [];
   bool _isLoading = true;
   String? _error;
@@ -54,58 +47,47 @@ class _LibraryPageState extends State<LibraryPage> {
   }
 
   Future<void> _loadTracks() async {
-    debugPrint('[LIBRARY] ===== _loadTracks() START =====');
+    debugPrint('[SONGS] ===== _loadTracks() START =====');
     final startTime = DateTime.now();
     setState(() {
-      debugPrint('[LIBRARY] setState: Setting _isLoading = true');
+      debugPrint('[SONGS] setState: Setting _isLoading = true');
       _isLoading = true;
       _error = null;
     });
 
     try {
-      debugPrint('[LIBRARY] Querying database...');
+      debugPrint('[SONGS] Querying database...');
       final dbStartTime = DateTime.now();
       // Use new type-safe repository pattern
       final trackModels = await _dbService.tracks.getAll();
       // Convert to maps for UI compatibility
       final cachedTracks = trackModels.map((t) => t.toJson()).toList();
       final dbEndTime = DateTime.now();
-      debugPrint(
-        '[LIBRARY] Database query took: ${dbEndTime.difference(dbStartTime).inMilliseconds}ms',
-      );
-      debugPrint(
-        '[LIBRARY] Retrieved ${cachedTracks.length} tracks from database',
-      );
-
+      debugPrint('[SONGS] Database query took: ${dbEndTime.difference(dbStartTime).inMilliseconds}ms');
+      debugPrint('[SONGS] Retrieved ${cachedTracks.length} tracks from database');
+      
       if (cachedTracks.isNotEmpty) {
         if (mounted) {
-          debugPrint(
-            '[LIBRARY] Setting ${cachedTracks.length} tracks in state...',
-          );
+          debugPrint('[SONGS] Setting ${cachedTracks.length} tracks in state...');
           final setStateStartTime = DateTime.now();
           setState(() {
             _tracks = cachedTracks;
             _isLoading = false;
           });
           final setStateEndTime = DateTime.now();
-          debugPrint(
-            '[LIBRARY] setState completed in: ${setStateEndTime.difference(setStateStartTime).inMilliseconds}ms',
-          );
+          debugPrint('[SONGS] setState completed in: ${setStateEndTime.difference(setStateStartTime).inMilliseconds}ms');
         }
-
-        debugPrint('[LIBRARY] Loading server URLs...');
+        
+        debugPrint('[SONGS] Loading server URLs...');
         await _loadServerUrls();
         final endTime = DateTime.now();
-        debugPrint(
-          '[LIBRARY] ===== _loadTracks() COMPLETE in ${endTime.difference(startTime).inMilliseconds}ms =====',
-        );
+        debugPrint('[SONGS] ===== _loadTracks() COMPLETE in ${endTime.difference(startTime).inMilliseconds}ms =====');
         return;
       }
 
       if (mounted) {
         setState(() {
-          _error =
-              'No songs in library. Please go to Settings > Server Settings and tap "Sync Library" to download your music library.';
+          _error = 'No songs in library. Please go to Settings > Server Settings and tap "Sync Library" to download your music library.';
           _isLoading = false;
         });
       }
@@ -125,39 +107,33 @@ class _LibraryPageState extends State<LibraryPage> {
       if (token == null) return;
 
       _currentToken = token;
-
-      // Use the single selected server URL
-      final serverUrl = await _storageService.getSelectedServerUrl();
-      final serverId = await _storageService.getSelectedServer();
-
-      if (serverUrl != null && serverId != null) {
-        _serverUrls = {serverId: serverUrl};
-        _currentServerUrl = serverUrl;
-        debugPrint('LIBRARY_PAGE: Using selected server URL: $serverUrl');
-      } else {
-        debugPrint('LIBRARY_PAGE: No server selected yet');
-      }
-
+      
+      // Use centralized server URL fetching
+      _serverUrls = await _serverService.fetchServerUrlMap(token);
+      debugPrint('SONGS_PAGE: Loaded ${_serverUrls.length} server URLs');
+      
       // Pass server URLs to audio service
       if (widget.audioPlayerService != null) {
         widget.audioPlayerService!.setServerUrls(_serverUrls);
       }
-
+      
+      if (_serverUrls.isNotEmpty) {
+        _currentServerUrl = _serverUrls.values.first;
+      }
+      
       // Trigger rebuild with server URLs
       if (mounted) {
         setState(() {});
       }
     } catch (e) {
-      debugPrint('LIBRARY_PAGE: Error loading server URLs: $e');
+      debugPrint('SONGS_PAGE: Error loading server URLs: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    debugPrint(
-      '[LIBRARY] build() called - _isLoading: $_isLoading, tracks: ${_tracks.length}',
-    );
-
+    debugPrint('[SONGS] build() called - _isLoading: $_isLoading, tracks: ${_tracks.length}');
+    
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: Color(0xFF121212),
@@ -199,8 +175,7 @@ class _LibraryPageState extends State<LibraryPage> {
       currentToken: _currentToken,
       serverUrls: _serverUrls,
       currentServerUrl: _currentServerUrl,
-      emptyMessage:
-          'No songs in library. Please go to Settings > Server Settings and tap "Sync Library" to download your music library.',
+      emptyMessage: 'No songs in library. Please go to Settings > Server Settings and tap "Sync Library" to download your music library.',
       onNavigate: widget.onNavigate,
       onHomeTap: widget.onHomeTap,
       onSettingsTap: widget.onSettingsTap,

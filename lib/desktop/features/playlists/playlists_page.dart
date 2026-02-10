@@ -69,8 +69,15 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
 
       _serverUrl = serverUrl;
 
-      // Get the serverId from single selection
-      final serverId = await _storageService.getSelectedServer();
+      // Get the serverId from the selected servers map
+      final selectedServers = await _storageService.getSelectedServers();
+      String? serverId;
+      for (var entry in selectedServers.entries) {
+        if (entry.value.isNotEmpty) {
+          serverId = entry.key;
+          break;
+        }
+      }
 
       if (serverId == null) {
         await _loadLocalPlaylists('No server ID found');

@@ -1,13 +1,4 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD:lib/features/main/main_screen.dart
-import '../../core/widgets/apollo_app_bar.dart';
-import '../../core/widgets/player_bar/player_bar.dart';
-import '../../core/services/audio_player_service.dart';
-import '../../core/services/storage_service.dart';
-import '../home/home_page.dart';
-import '../settings/settings_page.dart';
-import '../profile/profile_page.dart';
-=======
 import 'obscurify_app_bar.dart';
 import 'player_bar.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
@@ -18,7 +9,6 @@ import 'package:obscurify/desktop/features/authentication/presentation/authentic
 import 'package:obscurify/desktop/features/home/home_page.dart';
 import 'package:obscurify/desktop/features/settings/settings_page.dart';
 import 'package:obscurify/desktop/features/profile/profile_page.dart';
->>>>>>> file-structure-refactor:lib/desktop/shell/main_screen.dart
 
 class MainScreen extends StatefulWidget {
   final AudioPlayerService? audioPlayerService;

@@ -1,17 +1,9 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD:lib/features/collection/widgets/collection_track_list_item.dart
-import '../../../core/services/audio_player_service.dart';
-import '../../../core/database/database_service.dart';
-import '../../../core/services/plex/plex_services.dart';
-import '../../album/album_page.dart';
-import '../../artist/artist_page.dart';
-=======
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/services/plex/plex_services.dart';
 import 'package:obscurify/core/database/database_service.dart';
 import 'package:obscurify/desktop/features/album/album_page.dart';
 import 'package:obscurify/desktop/features/artist/artist_page.dart';
->>>>>>> file-structure-refactor:lib/desktop/features/collection/widgets/collection_track_list_item.dart
 
 /// A single track list item for collection pages.
 /// Displays track info and handles play interactions.
@@ -222,45 +214,6 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
     }
   }
 
-  Widget _buildArtistLink() {
-    final artistName = widget.track['artist'] as String;
-    final artistId = widget.track['grandparentRatingKey'] as String?;
-    
-    if (artistId == null) {
-      // No artist link available
-      return Text(
-        artistName,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: Colors.grey[400],
-          fontSize: 12,
-        ),
-      );
-    }
-    
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isArtistHovered = true),
-      onExit: (_) => setState(() => _isArtistHovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () => _navigateToArtist(context, artistId, artistName),
-        child: Text(
-          artistName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: _isArtistHovered ? Colors.white : Colors.grey[400],
-            fontSize: 12,
-            fontWeight: _isArtistHovered ? FontWeight.bold : FontWeight.normal,
-            decoration: _isArtistHovered ? TextDecoration.underline : null,
-            decorationColor: Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildAlbumArt() {
     return Container(
       width: 40,
@@ -452,11 +405,7 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
       onLoadTracks: () {
         debugPrint('ALBUM_NAV: onLoadTracks callback called with albumId: $albumId');
         return _dbService.tracks.getByAlbum(albumId).then((tracks) {
-<<<<<<< HEAD:lib/features/collection/widgets/collection_track_list_item.dart
-          debugPrint('ALBUM_NAV: getByAlbum returned ${tracks.length} tracks');
-=======
           debugPrint('ALBUM_NAV: getTracksForAlbum returned ${tracks.length} tracks');
->>>>>>> file-structure-refactor:lib/desktop/features/collection/widgets/collection_track_list_item.dart
           if (tracks.isEmpty) {
             debugPrint('ALBUM_NAV: WARNING - No tracks found for album!');
           }
@@ -475,61 +424,6 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
       // Fallback to push if no navigation callback
       Navigator.of(context).push(
         MaterialPageRoute(builder: (context) => albumPage),
-      );
-    }
-  }
-
-  void _navigateToArtist(BuildContext context, String artistId, String artistName) async {
-    debugPrint('ARTIST_NAV: ===== Navigating to artist =====');
-    debugPrint('ARTIST_NAV: artistId: $artistId');
-    debugPrint('ARTIST_NAV: artistName: $artistName');
-    debugPrint('ARTIST_NAV: currentToken: ${widget.currentToken}');
-    debugPrint('ARTIST_NAV: currentServerUrl: ${widget.currentServerUrl}');
-    
-    if (widget.currentToken == null) {
-      debugPrint('ARTIST_NAV: ERROR - Missing token');
-      return;
-    }
-    
-    final trackServerId = widget.track['serverId'] as String?;
-    
-    // Use centralized server URL lookup like the player bar does
-    String? serverUrl = widget.currentServerUrl;
-    if (trackServerId != null) {
-      try {
-        serverUrl = await _serverService.getUrlForServer(widget.currentToken!, trackServerId);
-        debugPrint('ARTIST_NAV: Got URL for server $trackServerId: $serverUrl');
-      } catch (e) {
-        debugPrint('ARTIST_NAV: Error getting server URL: $e');
-      }
-    }
-    
-    // Fallback to current server URL if lookup failed
-    serverUrl ??= widget.currentServerUrl;
-    
-    if (serverUrl == null) {
-      debugPrint('ARTIST_NAV: ERROR - No server URL available');
-      return;
-    }
-    
-    debugPrint('ARTIST_NAV: Creating ArtistPage with serverUrl: $serverUrl');
-    
-    final artistPage = ArtistPage(
-      artistId: artistId,
-      artistName: artistName,
-      serverUrl: serverUrl,
-      token: widget.currentToken!,
-      audioPlayerService: widget.audioPlayerService,
-      onNavigate: widget.onNavigate,
-    );
-
-    // Use onNavigate callback if available (keeps MainScreen's app bar consistent)
-    if (widget.onNavigate != null) {
-      widget.onNavigate!(artistPage);
-    } else {
-      // Fallback to push if no navigation callback
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => artistPage),
       );
     }
   }
