@@ -11,6 +11,8 @@ class TableSchema {
       genre TEXT,
       country TEXT,
       server_id TEXT NOT NULL,
+      album_count INTEGER DEFAULT 0,
+      track_count INTEGER DEFAULT 0,
       added_at INTEGER,
       updated_at INTEGER
     )
@@ -30,6 +32,7 @@ class TableSchema {
       studio TEXT,
       summary TEXT,
       track_count INTEGER DEFAULT 0,
+      total_duration INTEGER DEFAULT 0,
       server_id TEXT NOT NULL,
       added_at INTEGER,
       updated_at INTEGER,
@@ -84,6 +87,7 @@ class TableSchema {
       summary TEXT,
       type TEXT,
       smart INTEGER,
+      search_query TEXT,
       composite TEXT,
       duration INTEGER,
       leaf_count INTEGER,
@@ -103,6 +107,39 @@ class TableSchema {
     )
   ''';
 
+  /// Structured media properties extracted from tracks.media_data JSON.
+  /// Enables efficient filtering by codec, bitrate, etc.
+  static const String createMediaItems = '''
+    CREATE TABLE media_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      track_id INTEGER NOT NULL,
+      part_key TEXT,
+      container TEXT,
+      codec TEXT,
+      bitrate INTEGER,
+      channels INTEGER,
+      sample_rate INTEGER,
+      bit_depth INTEGER,
+      duration INTEGER,
+      file_path TEXT,
+      file_size INTEGER,
+      FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE CASCADE
+    )
+  ''';
+
+  /// FTS5 virtual table for fast full-text search across tracks.
+  /// Uses content-sync mode to avoid storing duplicate data.
+  /// Must be kept in sync via rebuild after bulk operations.
+  static const String createTracksFts = '''
+    CREATE VIRTUAL TABLE IF NOT EXISTS tracks_fts USING fts5(
+      title,
+      artist_name,
+      album_name,
+      content=tracks,
+      content_rowid=id
+    )
+  ''';
+
   /// Execute all table creation statements
   static Future<void> createAll(dynamic db) async {
     await db.execute(createArtists);
@@ -111,5 +148,11 @@ class TableSchema {
     await db.execute(createSyncMetadata);
     await db.execute(createPlaylists);
     await db.execute(createPlaylistTracks);
+    await db.execute(createMediaItems);
+    try {
+      await db.execute(createTracksFts);
+    } catch (e) {
+      // FTS5 may not be available on all platforms
+    }
   }
 }

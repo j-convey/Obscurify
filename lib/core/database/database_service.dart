@@ -7,6 +7,7 @@ import 'schema/tables.dart';
 import 'schema/views.dart';
 import 'schema/indexes.dart';
 import 'schema/migrations.dart';
+import 'schema/triggers.dart';
 import 'repositories/artist_repository.dart';
 import 'repositories/album_repository.dart';
 import 'repositories/track_repository.dart';
@@ -95,15 +96,31 @@ class DatabaseService {
     return await openDatabase(
       path,
       version: MigrationSchema.currentVersion,
+      onConfigure: _onConfigure,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
   }
 
+  /// Configure database pragmas on every connection open.
+  /// These must be set per-connection as they are not persisted.
+  Future<void> _onConfigure(Database db) async {
+    // Enable foreign key constraint enforcement (disabled by default in SQLite).
+    // Use rawQuery on mobile – Android's native sqflite rejects execute() for
+    // PRAGMA statements that may return a result set.
+    await db.rawQuery('PRAGMA foreign_keys = ON');
+
+    // Enable Write-Ahead Logging for concurrent read/write performance.
+    // On Android API 16+ WAL is already the default, but this ensures it on
+    // all platforms. rawQuery is required because the PRAGMA returns the
+    // current journal mode as a result row.
+    await db.rawQuery('PRAGMA journal_mode = WAL');
+  }
+
   Future<void> _onCreate(Database db, int version) async {
     debugPrint('DATABASE: Creating new database with version $version');
     
-    // Create tables
+    // Create tables (includes media_items and FTS5)
     await TableSchema.createAll(db);
     
     // Create views
@@ -111,6 +128,9 @@ class DatabaseService {
     
     // Create indexes
     await IndexSchema.createAll(db);
+    
+    // Create triggers for data integrity (name sync, thumb sync)
+    await TriggerSchema.createAll(db);
     
     debugPrint('DATABASE: Database created successfully');
   }

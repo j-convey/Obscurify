@@ -120,6 +120,7 @@ class Album {
       'studio': studio ?? '',
       'summary': summary ?? '',
       'track_count': trackCount,
+      'total_duration': totalDuration,
       'server_id': serverId,
       'added_at': addedAt ?? DateTime.now().millisecondsSinceEpoch,
       'updated_at': DateTime.now().millisecondsSinceEpoch,

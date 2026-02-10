@@ -393,12 +393,12 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
       onProfileTap: widget.onProfileTap,
       onLoadTracks: () {
         debugPrint('ALBUM_NAV: onLoadTracks callback called with albumId: $albumId');
-        return _dbService.getTracksForAlbum(albumId).then((tracks) {
+        return _dbService.tracks.getByAlbum(albumId).then((tracks) {
           debugPrint('ALBUM_NAV: getTracksForAlbum returned ${tracks.length} tracks');
           if (tracks.isEmpty) {
             debugPrint('ALBUM_NAV: WARNING - No tracks found for album!');
           }
-          return tracks;
+          return tracks.map((track) => track.toJson()).toList();
         }).catchError((error) {
           debugPrint('ALBUM_NAV: ERROR fetching album tracks: $error');
           throw error;

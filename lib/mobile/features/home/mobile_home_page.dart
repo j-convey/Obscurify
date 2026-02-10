@@ -4,6 +4,7 @@ import '../../../core/services/plex/plex_services.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/database/database_service.dart';
 import '../../../core/models/track.dart';
+import '../../../core/services/library_change_notifier.dart';
 import 'widgets/home_nav_bar.dart';
 
 /// Mobile home page with quick access buttons matching the desktop layout.
@@ -31,6 +32,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   final DatabaseService _db = DatabaseService();
   final PlexServerService _serverService = PlexServerService();
   final StorageService _storageService = StorageService();
+  final LibraryChangeNotifier _libraryNotifier = LibraryChangeNotifier();
   
   List<Track> _recentTracks = [];
   bool _isLoading = true;
@@ -41,6 +43,13 @@ class _MobileHomePageState extends State<MobileHomePage> {
   void initState() {
     super.initState();
     _loadData();
+    _libraryNotifier.addListener(_loadData);
+  }
+
+  @override
+  void dispose() {
+    _libraryNotifier.removeListener(_loadData);
+    super.dispose();
   }
 
   Future<void> _loadData() async {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:apollo/core/services/plex/plex_services.dart';
-import 'server_settings_service.dart';
+import 'package:apollo/core/services/server_settings_service.dart';
 
 class MobileServerSettingsPage extends StatefulWidget {
   const MobileServerSettingsPage({super.key});
@@ -36,23 +36,17 @@ class _MobileServerSettingsPageState extends State<MobileServerSettingsPage> {
   Future<void> _checkAuthStatus() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
-    
-    final token = await _service.getPlexToken();
-    if (token != null) {
-      final isValid = await _service.validateToken(token);
-      if (isValid) {
-        final user = await _service.getUsername();
-        if (!mounted) return;
-        setState(() {
-          _isAuthenticated = true;
-          _username = user;
-        });
-        await _loadServersAndLibraries();
-      } else {
-        await _service.clearCredentials();
-      }
+
+    final username = await _service.checkAuthStatus();
+    if (username != null) {
+      if (!mounted) return;
+      setState(() {
+        _isAuthenticated = true;
+        _username = username;
+      });
+      await _loadServersAndLibraries();
     }
-    
+
     if (!mounted) return;
     setState(() => _isLoading = false);
     await _loadSyncStatus();
@@ -72,17 +66,17 @@ class _MobileServerSettingsPageState extends State<MobileServerSettingsPage> {
       await _service.syncLibrary(
         _servers,
         _serverLibraries,
-        (library) {
+        onStatusChange: (library) {
           if (mounted) {
             setState(() => _currentSyncingLibrary = library);
           }
         },
-        (progress) {
+        onProgressChange: (progress) {
           if (mounted) {
             setState(() => _syncProgress = progress);
           }
         },
-        (tracks) {
+        onTracksSyncedChange: (tracks) {
           if (mounted) {
             setState(() => _totalTracksSynced = tracks);
           }
@@ -170,8 +164,7 @@ class _MobileServerSettingsPageState extends State<MobileServerSettingsPage> {
   }
 
   Future<void> _saveSelections() async {
-    await _service.saveSelections(_selectedLibraries);
-    await _service.saveServerUrlMap(_servers);
+    await _service.saveSelections(_selectedLibraries, _servers);
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -256,7 +249,7 @@ class _MobileServerSettingsPageState extends State<MobileServerSettingsPage> {
     );
 
     if (confirmed == true) {
-      await _service.clearCredentials();
+      await _service.signOut();
       if (!mounted) return;
       setState(() {
         _isAuthenticated = false;
@@ -264,6 +257,7 @@ class _MobileServerSettingsPageState extends State<MobileServerSettingsPage> {
         _servers = [];
         _serverLibraries = {};
         _selectedLibraries = {};
+        _syncStatus = null;
       });
       
       if (mounted) {

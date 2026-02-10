@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:apollo/core/services/plex/plex_services.dart';
-import 'package:apollo/core/services/storage_service.dart';
-import 'package:apollo/core/database/database_service.dart';
+import 'package:apollo/core/services/server_settings_service.dart';
 
 class ServerSettingsPage extends StatefulWidget {
   const ServerSettingsPage({super.key});
@@ -11,11 +10,8 @@ class ServerSettingsPage extends StatefulWidget {
 }
 
 class _ServerSettingsPageState extends State<ServerSettingsPage> {
-  final PlexAuthService _authService = PlexAuthService();
-  final PlexServerService _serverService = PlexServerService();
-  final PlexLibraryService _libraryService = PlexLibraryService();
-  final StorageService _storageService = StorageService();
-  final DatabaseService _dbService = DatabaseService();
+  final _service = ServerSettingsService();
+
   bool _isAuthenticated = false;
   bool _isLoading = false;
   bool _isLoadingServers = false;
@@ -41,157 +37,56 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
   Future<void> _checkAuthStatus() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
-    
-    final token = await _storageService.getPlexToken();
-    if (token != null) {
-      final isValid = await _authService.validateToken(token);
-      if (isValid) {
-        final user = await _storageService.getUsername();
-        if (!mounted) return;
-        setState(() {
-          _isAuthenticated = true;
-          _username = user;
-        });
-        // Load servers and libraries
-        await _loadServersAndLibraries();
-      } else {
-        await _storageService.clearPlexCredentials();
-      }
+
+    final username = await _service.checkAuthStatus();
+    if (username != null) {
+      if (!mounted) return;
+      setState(() {
+        _isAuthenticated = true;
+        _username = username;
+      });
+      await _loadServersAndLibraries();
     }
-    
+
     if (!mounted) return;
     setState(() => _isLoading = false);
-    
-    // Load sync status
     await _loadSyncStatus();
   }
 
   Future<void> _loadSyncStatus() async {
-    try {
-      final syncMetadata = await _dbService.getAllSyncMetadata();
-      final trackCount = await _dbService.getTrackCount();
-      
-      if (syncMetadata.isNotEmpty) {
-        final lastSync = syncMetadata.first['last_sync'] as int;
-        final lastSyncDate = DateTime.fromMillisecondsSinceEpoch(lastSync);
-        
-        if (mounted) {
-          setState(() {
-            _syncStatus = {
-              'trackCount': trackCount,
-              'lastSync': lastSyncDate,
-            };
-          });
-        }
-      }
-    } catch (e) {
-      print('Error loading sync status: $e');
-    }
+    final syncStatus = await _service.loadSyncStatus();
+    if (!mounted) return;
+    setState(() => _syncStatus = syncStatus);
   }
 
   Future<void> _syncLibrary() async {
     if (!mounted) return;
-    setState(() => _isSyncing = true);
+    setState(() {
+      _isSyncing = true;
+      _syncProgress = 0.0;
+      _totalTracksSynced = 0;
+      _estimatedTotalTracks = 1;
+    });
 
     try {
-      final token = await _storageService.getPlexToken();
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
-
-      final selectedServers = await _storageService.getSelectedServers();
-      if (selectedServers.isEmpty) {
-        throw Exception('No libraries selected');
-      }
-
-      // Calculate total libraries to sync
-      int totalLibraries = 0;
-      for (var server in _servers) {
-        final libraryKeys = selectedServers[server.machineIdentifier];
-        if (libraryKeys != null && libraryKeys.isNotEmpty) {
-          totalLibraries += libraryKeys.length;
-        }
-      }
-
-      if (!mounted) return;
-      setState(() {
-        _syncProgress = 0.0;
-        _totalTracksSynced = 0;
-        _estimatedTotalTracks = 1; // Will be updated as we fetch
-      });
-
-      int totalTracks = 0;
-      int librariesCompleted = 0;
-      
-      // Sync tracks from all selected libraries (fetch + save in one pass)
-      for (var server in _servers) {
-        final libraryKeys = selectedServers[server.machineIdentifier];
-        
-        if (libraryKeys != null && libraryKeys.isNotEmpty) {
-          final serverUrl = _serverService.getBestConnectionUrlForServer(server);
-          
-          if (serverUrl != null) {
-            for (var libraryKey in libraryKeys) {
-              if (!mounted) return;
-              
-              // Update progress tracking
-              final libraryInfo = _serverLibraries[server.machineIdentifier]
-                  ?.firstWhere(
-                    (lib) => lib['key'] == libraryKey,
-                    orElse: () => {'title': 'Library $libraryKey'},
-                  );
-              final libraryTitle = libraryInfo?['title'] as String? ?? 'Library $libraryKey';
-              
-              setState(() {
-                _currentSyncingLibrary = '$libraryTitle (fetching...)';
-              });
-
-              print('Fetching library $libraryKey from server ${server.machineIdentifier}...');
-              
-              final tracks = await _libraryService.getTracks(token, serverUrl, libraryKey);
-              
-              // Add serverId to all tracks (do once, not twice)
-              final tracksWithServerId = tracks.map((track) {
-                track['serverId'] = server.machineIdentifier;
-                return track;
-              }).toList();
-              
-              if (!mounted) return;
-              setState(() {
-                _currentSyncingLibrary = '$libraryTitle (saving...)';
-                _estimatedTotalTracks = totalTracks + tracks.length; // Update estimate
-              });
-              
-              print('Saving ${tracks.length} tracks from library $libraryKey...');
-              
-              // Save with progress callback
-              await _dbService.saveTracks(
-                server.machineIdentifier,
-                libraryKey,
-                tracksWithServerId,
-                onProgress: (current, total) {
-                  if (mounted) {
-                    setState(() {
-                      _currentSyncingLibrary = '$libraryTitle (saving $current/$total)';
-                    });
-                  }
-                },
-              );
-              
-              totalTracks += tracks.length;
-              librariesCompleted++;
-              
-              if (!mounted) return;
-              setState(() {
-                _totalTracksSynced = totalTracks;
-                _syncProgress = librariesCompleted / totalLibraries;
-              });
-              
-              print('Completed ${tracks.length} tracks from library $libraryKey');
-            }
+      final totalTracks = await _service.syncLibrary(
+        _servers,
+        _serverLibraries,
+        onStatusChange: (status) {
+          if (mounted) setState(() => _currentSyncingLibrary = status);
+        },
+        onProgressChange: (progress) {
+          if (mounted) setState(() => _syncProgress = progress);
+        },
+        onTracksSyncedChange: (tracks) {
+          if (mounted) {
+            setState(() {
+              _totalTracksSynced = tracks;
+              _estimatedTotalTracks = tracks;
+            });
           }
-        }
-      }
+        },
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -200,7 +95,6 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
             backgroundColor: Colors.green,
           ),
         );
-        
         await _loadSyncStatus();
       }
     } catch (e) {
@@ -228,8 +122,8 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
   Future<void> _loadServersAndLibraries() async {
     if (!mounted) return;
     setState(() => _isLoadingServers = true);
-    
-    final token = await _storageService.getPlexToken();
+
+    final token = await _service.getPlexToken();
     if (token == null) {
       if (!mounted) return;
       setState(() => _isLoadingServers = false);
@@ -237,44 +131,23 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
     }
 
     try {
-      // Get servers
-      _servers = await _serverService.getServers(token);
-      
-      // Load saved selections
-      final savedSelections = await _storageService.getSelectedServers();
-      _selectedLibraries = savedSelections.map(
-        (key, value) => MapEntry(key, value.toSet())
-      );
+      _servers = await _service.getServers(token);
 
-      // Get libraries for all servers in parallel
+      final savedSelections = await _service.getSelectedServers();
+      _selectedLibraries =
+          savedSelections.map((key, value) => MapEntry(key, value.toSet()));
+
       final libraryFutures = _servers.map((server) async {
-        if (!mounted) return MapEntry('', <Map<String, dynamic>>[]);
-        final serverUrl = _serverService.getBestConnectionUrlForServer(server);
-        
-        if (serverUrl != null) {
-          try {
-            final libraries = await _libraryService.getLibraries(token, serverUrl);
-            // Filter to only music libraries (type == 'artist')
-            final musicLibraries = libraries.where((l) => l.isMusicLibrary).toList();
-            return MapEntry(server.machineIdentifier, musicLibraries.map((l) => l.toJson()).toList());
-          } catch (e) {
-            // Error fetching libraries - return empty list
-            return MapEntry(server.machineIdentifier, <Map<String, dynamic>>[]);
-          }
-        }
-        return MapEntry('', <Map<String, dynamic>>[]);
+        final libraries = await _service.getLibrariesForServer(token, server);
+        return MapEntry(server.machineIdentifier, libraries);
       }).toList();
 
       final libraryResults = await Future.wait(libraryFutures);
-      
+
       if (!mounted) return;
-      
-      // Update state with results
+
       for (var entry in libraryResults) {
-        if (entry.key.isEmpty) continue; // Skip empty entries from early returns
         _serverLibraries[entry.key] = entry.value;
-        
-        // Initialize selection if not already set
         if (!_selectedLibraries.containsKey(entry.key)) {
           _selectedLibraries[entry.key] = {};
         }
@@ -289,20 +162,14 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
         );
       }
     }
-    
+
     if (!mounted) return;
     setState(() => _isLoadingServers = false);
   }
 
   Future<void> _saveSelections() async {
-    final selections = _selectedLibraries.map(
-      (key, value) => MapEntry(key, value.toList())
-    );
-    await _storageService.saveSelectedServers(selections);
-    
-    // Build and save the server URL map for the selected servers
-    await _saveServerUrlMap();
-    
+    await _service.saveSelections(_selectedLibraries, _servers);
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -313,44 +180,24 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
     }
   }
 
-  /// Saves the mapping of server IDs to their best connection URLs.
-  Future<void> _saveServerUrlMap() async {
-    final Map<String, String> urlMap = {};
-    
-    for (var server in _servers) {
-      final serverUrl = _serverService.getBestConnectionUrlForServer(server);
-      if (serverUrl != null) {
-        urlMap[server.machineIdentifier] = serverUrl;
-        debugPrint('Saving server URL: ${server.machineIdentifier} -> $serverUrl');
-      }
-    }
-    
-    await _storageService.saveServerUrlMap(urlMap);
-    debugPrint('Saved ${urlMap.length} server URLs to storage');
-  }
-
   Future<void> _signIn() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
-    
+
     try {
-      final result = await _authService.signIn();
-      
+      final result = await _service.signIn();
+
       if (result['success'] == true) {
-        await _storageService.savePlexToken(result['token']);
-        if (result['username'] != null) {
-          await _storageService.saveUsername(result['username']);
-        }
-        
+        await _service.saveCredentials(result['token'], result['username']);
+
         if (!mounted) return;
         setState(() {
           _isAuthenticated = true;
           _username = result['username'];
         });
-        
-        // Load servers and libraries after successful sign-in
+
         await _loadServersAndLibraries();
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -385,23 +232,6 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
     }
   }
 
-  String _formatSyncDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-    
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}d ago';
-    } else {
-      return '${date.month}/${date.day}/${date.year}';
-    }
-  }
-
   Future<void> _signOut() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -422,7 +252,7 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
     );
 
     if (confirmed == true) {
-      await _storageService.clearPlexCredentials();
+      await _service.signOut();
       if (!mounted) return;
       setState(() {
         _isAuthenticated = false;
@@ -430,13 +260,12 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
         _servers = [];
         _serverLibraries = {};
         _selectedLibraries = {};
+        _syncStatus = null;
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Disconnected from Plex'),
-          ),
+          const SnackBar(content: Text('Disconnected from Plex')),
         );
       }
     }
@@ -603,7 +432,7 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        '${_syncStatus!['trackCount']} songs synced • Last sync: ${_formatSyncDate(_syncStatus!['lastSync'])}',
+                                        '${_syncStatus!['trackCount']} songs synced • Last sync: ${_service.formatSyncDate(_syncStatus!['lastSync'])}',
                                         style: const TextStyle(fontSize: 13),
                                       ),
                                     ),

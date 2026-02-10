@@ -90,9 +90,30 @@ class TrackRepository extends BaseRepository {
     return maps.map(Track.fromDb).toList();
   }
 
-  /// Search tracks by title, artist, or album
+  /// Search tracks by title, artist, or album.
+  /// Uses FTS5 for fast prefix-matching search (e.g., "Beat" matches "Beatles").
+  /// Falls back to LIKE-based search if FTS5 is not available.
   Future<List<Track>> search(String query, {int limit = 20}) async {
     if (query.trim().isEmpty) return [];
+
+    // Try FTS5 search first (faster, supports prefix matching)
+    try {
+      final ftsQuery = _buildFtsQuery(query);
+      if (ftsQuery.isNotEmpty) {
+        final maps = await rawQuery('''
+          SELECT v.* FROM tracks_fts fts
+          JOIN v_tracks_full v ON v.id = fts.rowid
+          WHERE tracks_fts MATCH ?
+          ORDER BY fts.rank
+          LIMIT ?
+        ''', [ftsQuery, limit]);
+        return maps.map(Track.fromDb).toList();
+      }
+    } catch (_) {
+      // FTS5 not available, fall through to LIKE
+    }
+
+    // Fallback: LIKE-based search
     final searchQuery = '%${query.toLowerCase()}%';
     final maps = await rawQuery('''
       SELECT * FROM v_tracks_full 
@@ -103,6 +124,21 @@ class TrackRepository extends BaseRepository {
       LIMIT ?
     ''', [searchQuery, searchQuery, searchQuery, limit]);
     return maps.map(Track.fromDb).toList();
+  }
+
+  /// Build an FTS5 query string with prefix matching from user input.
+  /// Escapes special characters and adds '*' suffix for prefix matching.
+  String _buildFtsQuery(String query) {
+    final words = query.trim().split(RegExp(r'\s+'));
+    return words
+        .where((w) => w.isNotEmpty)
+        .map((w) {
+          // Remove FTS5 special characters to prevent query injection
+          final escaped = w.replaceAll(RegExp(r'["\*\(\)\-\+\^]'), '');
+          return escaped.isNotEmpty ? '"$escaped"*' : '';
+        })
+        .where((w) => w.isNotEmpty)
+        .join(' ');
   }
 
   /// Get track count
@@ -280,6 +316,29 @@ class TrackRepository extends BaseRepository {
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
+
+      // 8. Update cached counts on artists and albums
+      // This avoids expensive GROUP BY + COUNT in views at read time.
+      await txn.execute('''
+        UPDATE artists SET
+          album_count = (SELECT COUNT(*) FROM albums WHERE albums.artist_id = artists.id),
+          track_count = (SELECT COUNT(*) FROM tracks WHERE tracks.artist_id = artists.id)
+        WHERE server_id = ?
+      ''', [serverId]);
+
+      await txn.execute('''
+        UPDATE albums SET
+          track_count = (SELECT COUNT(*) FROM tracks WHERE tracks.album_id = albums.id),
+          total_duration = (SELECT COALESCE(SUM(duration), 0) FROM tracks WHERE tracks.album_id = albums.id)
+        WHERE server_id = ?
+      ''', [serverId]);
+
+      // 9. Rebuild FTS5 search index
+      try {
+        await txn.execute("INSERT INTO tracks_fts(tracks_fts) VALUES('rebuild')");
+      } catch (e) {
+        // FTS5 may not be available on this platform
+      }
     });
 
     debugPrint('DATABASE: Saved ${tracks.length} tracks for $serverId/$libraryKey');

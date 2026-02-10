@@ -4,6 +4,7 @@ import '../../../core/models/track.dart';
 import '../../../core/services/plex/plex_services.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/audio_player_service.dart';
+import '../../../core/services/library_change_notifier.dart';
 import 'widgets/track_options_sheet.dart';
 import '../../shared/widgets/track_tile.dart';
 
@@ -24,6 +25,7 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
   final DatabaseService _db = DatabaseService();
   final PlexServerService _serverService = PlexServerService();
   final StorageService _storageService = StorageService();
+  final LibraryChangeNotifier _libraryNotifier = LibraryChangeNotifier();
   late Future<List<Track>> _tracksFuture;
   
   String? _currentToken;
@@ -34,6 +36,13 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
     super.initState();
     _loadTracks();
     _loadServerUrls();
+    _libraryNotifier.addListener(_refreshTracks);
+  }
+
+  @override
+  void dispose() {
+    _libraryNotifier.removeListener(_refreshTracks);
+    super.dispose();
   }
 
   void _loadTracks() {

@@ -80,13 +80,13 @@ class _AppBarSearchBarState extends State<AppBarSearchBar> {
   }
 
   Future<void> _performSearch(String query) async {
-    final trackResults = await _dbService.searchTracks(query);
-    final artistResults = await _dbService.searchArtists(query);
+    final trackResults = await _dbService.tracks.search(query);
+    final artistResults = await _dbService.artists.search(query);
     
     if (mounted) {
       setState(() {
-        _trackResults = trackResults;
-        _artistResults = artistResults;
+        _trackResults = trackResults.map((t) => t.toJson()).toList();
+        _artistResults = artistResults.map((a) => a.toJson()).toList();
       });
       if ((trackResults.isNotEmpty || artistResults.isNotEmpty) && _focusNode.hasFocus) {
         _showOverlay();
@@ -344,10 +344,11 @@ class _AppBarSearchBarState extends State<AppBarSearchBar> {
     
     if (widget.audioPlayerService != null && token != null && serverUrl != null) {
       // Get all tracks for queue context
-      final allTracks = await _dbService.getAllTracks();
-      final trackIndex = allTracks.indexWhere((t) => t['key'] == track['key']);
+      final allTracks = await _dbService.tracks.getAll();
+      final allTrackMaps = allTracks.map((t) => t.toJson()).toList();
+      final trackIndex = allTrackMaps.indexWhere((t) => t['key'] == track['key']);
       
-      widget.audioPlayerService!.setPlayQueue(allTracks, trackIndex >= 0 ? trackIndex : 0);
+      widget.audioPlayerService!.setPlayQueue(allTrackMaps, trackIndex >= 0 ? trackIndex : 0);
       widget.audioPlayerService!.playTrack(track, token, serverUrl);
     }
   }
