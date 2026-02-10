@@ -54,7 +54,7 @@ class Track {
   });
 
   /// Returns a version of the title sanitized for alphabetical sorting.
-  String get sortableTitle => ApolloStringUtils.toSortable(title);
+  String get sortableTitle => ObscurifyStringUtils.toSortable(title);
 
   /// Returns null if the string is null or empty (treats '' as null)
   static String? _nonEmpty(String? s) => (s != null && s.isNotEmpty) ? s : null;

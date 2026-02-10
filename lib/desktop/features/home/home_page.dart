@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:apollo/core/services/audio_player_service.dart';
-import 'package:apollo/core/services/storage_service.dart';
-import 'package:apollo/core/services/home_data_service.dart';
-import 'package:apollo/core/services/plex/plex_services.dart';
-import 'package:apollo/core/database/database_service.dart';
-import 'package:apollo/shared/widgets/content_carousel.dart';
-import 'package:apollo/desktop/features/songs/songs_page.dart';
-import 'package:apollo/desktop/features/playlists/playlists_page.dart';
-import 'package:apollo/desktop/features/artist/artists_list_page.dart';
-import 'package:apollo/desktop/features/artist/artist_page.dart';
-import 'package:apollo/desktop/features/album/album_page.dart';
+import 'package:obscurify/core/services/audio_player_service.dart';
+import 'package:obscurify/core/services/storage_service.dart';
+import 'package:obscurify/core/services/home_data_service.dart';
+import 'package:obscurify/core/services/plex/plex_services.dart';
+import 'package:obscurify/core/database/database_service.dart';
+import 'package:obscurify/shared/widgets/content_carousel.dart';
+import 'package:obscurify/desktop/features/songs/songs_page.dart';
+import 'package:obscurify/desktop/features/playlists/playlists_page.dart';
+import 'package:obscurify/desktop/features/artist/artists_list_page.dart';
+import 'package:obscurify/desktop/features/artist/artist_page.dart';
+import 'package:obscurify/desktop/features/album/album_page.dart';
 
 class HomePage extends StatefulWidget {
   final Function(Widget)? onNavigate;

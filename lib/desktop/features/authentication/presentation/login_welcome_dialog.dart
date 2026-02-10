@@ -43,7 +43,7 @@ class LoginWelcomeDialog extends StatelessWidget {
 
               // Welcome Title
               Text(
-                'Welcome to Apollo',
+                'Welcome to Obscurify',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -53,7 +53,7 @@ class LoginWelcomeDialog extends StatelessWidget {
 
               // Description
               Text(
-                'Apollo is your personal music streaming app powered by Plex. To get started, connect your Plex account and sync your music libraries.',
+                'Obscurify is your personal music streaming app powered by Plex. To get started, connect your Plex account and sync your music libraries.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Colors.grey[600],
                       height: 1.5,

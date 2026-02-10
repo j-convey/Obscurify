@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:apollo/core/models/artist.dart';
+import 'package:obscurify/core/models/artist.dart';
 import '../../../shared/widgets/plex_image.dart';
 
 class ArtistGridItem extends StatelessWidget {

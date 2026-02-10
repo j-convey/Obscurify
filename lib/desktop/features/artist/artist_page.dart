@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:apollo/core/models/artist.dart';
-import 'package:apollo/core/services/plex/plex_artist_service.dart';
-import 'package:apollo/core/services/audio_player_service.dart';
+import 'package:obscurify/core/models/artist.dart';
+import 'package:obscurify/core/services/plex/plex_artist_service.dart';
+import 'package:obscurify/core/services/audio_player_service.dart';
 import 'artist_albums_carousel.dart';
 import '../album/album_page.dart';
 

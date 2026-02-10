@@ -33,7 +33,7 @@ class ProfileDrawer extends StatelessWidget {
                   const SizedBox(height: 16),
                   // Name (placeholder)
                   const Text(
-                    'Apollo User',
+                    'Obscurify User',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 22,

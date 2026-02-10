@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'apollo_app_bar.dart';
+import 'obscurify_app_bar.dart';
 import 'player_bar.dart';
-import 'package:apollo/core/services/audio_player_service.dart';
-import 'package:apollo/core/services/storage_service.dart';
-import 'package:apollo/core/services/plex/plex_services.dart';
-import 'package:apollo/core/services/authentication_check_service.dart';
-import 'package:apollo/desktop/features/authentication/presentation/authentication_modal.dart';
-import 'package:apollo/desktop/features/home/home_page.dart';
-import 'package:apollo/desktop/features/settings/settings_page.dart';
-import 'package:apollo/desktop/features/profile/profile_page.dart';
+import 'package:obscurify/core/services/audio_player_service.dart';
+import 'package:obscurify/core/services/storage_service.dart';
+import 'package:obscurify/core/services/plex/plex_services.dart';
+import 'package:obscurify/core/services/authentication_check_service.dart';
+import 'package:obscurify/desktop/features/authentication/presentation/authentication_modal.dart';
+import 'package:obscurify/desktop/features/home/home_page.dart';
+import 'package:obscurify/desktop/features/settings/settings_page.dart';
+import 'package:obscurify/desktop/features/profile/profile_page.dart';
 
 class MainScreen extends StatefulWidget {
   final AudioPlayerService? audioPlayerService;
@@ -149,7 +149,7 @@ class _MainScreenState extends State<MainScreen> {
         backgroundColor: const Color(0xFF121212),
         body: Column(
           children: [
-            ApolloAppBar(
+            ObscurifyAppBar(
               audioPlayerService: _audioPlayerService,
               currentToken: _currentToken,
               currentServerUrl: _currentServerUrl,

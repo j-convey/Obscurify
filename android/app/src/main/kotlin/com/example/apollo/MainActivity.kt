@@ -1,4 +1,4 @@
-package com.example.apollo
+package com.example.obscurify
 
 import io.flutter.embedding.android.FlutterActivity
 

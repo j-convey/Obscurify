@@ -4,9 +4,9 @@ import 'navigation_buttons.dart';
 import 'app_bar_search_bar.dart';
 import 'app_bar_actions.dart';
 import 'window_controls.dart';
-import 'package:apollo/core/services/audio_player_service.dart';
+import 'package:obscurify/core/services/audio_player_service.dart';
 
-class ApolloAppBar extends StatelessWidget implements PreferredSizeWidget {
+class ObscurifyAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onHomeTap;
   final VoidCallback? onBackPressed;
   final VoidCallback? onForwardPressed;
@@ -25,7 +25,7 @@ class ApolloAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String? currentServerUrl;
   final void Function(Widget)? onNavigate;
   
-  const ApolloAppBar({
+  const ObscurifyAppBar({
     super.key,
     this.onHomeTap,
     this.onBackPressed,

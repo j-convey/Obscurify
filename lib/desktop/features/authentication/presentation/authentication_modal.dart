@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:apollo/core/services/plex/plex_services.dart';
-import 'package:apollo/core/services/authentication_check_service.dart';
+import 'package:obscurify/core/services/plex/plex_services.dart';
+import 'package:obscurify/core/services/authentication_check_service.dart';
 import 'login_welcome_dialog.dart';
 
 /// Modal coordinator for first-time authentication.

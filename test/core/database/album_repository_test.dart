@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:apollo/core/database/repositories/album_repository.dart';
-import 'package:apollo/core/models/album.dart';
-import 'package:apollo/core/models/track.dart';
+import 'package:obscurify/core/database/repositories/album_repository.dart';
+import 'package:obscurify/core/models/album.dart';
+import 'package:obscurify/core/models/track.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
 import 'dart:io';

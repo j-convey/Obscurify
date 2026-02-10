@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:apollo/core/services/plex/plex_services.dart';
-import 'package:apollo/core/services/server_settings_service.dart';
+import 'package:obscurify/core/services/plex/plex_services.dart';
+import 'package:obscurify/core/services/server_settings_service.dart';
 
 class MobileServerSettingsPage extends StatefulWidget {
   const MobileServerSettingsPage({super.key});
@@ -595,7 +595,7 @@ class _MobileServerSettingsPageState extends State<MobileServerSettingsPage> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Choose which music libraries you want to use in Apollo',
+          'Choose which music libraries you want to use in Obscurify',
           style: TextStyle(fontSize: 14, color: Colors.white60),
         ),
         const SizedBox(height: 16),

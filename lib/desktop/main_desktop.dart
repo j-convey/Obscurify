@@ -28,14 +28,14 @@ void main() async {
     await windowManager.focus();
   });
   
-  runApp(const ApolloDesktopApp());
+  runApp(const ObscurifyDesktopApp());
 }
 
-class ApolloDesktopApp extends StatelessWidget {
+class ObscurifyDesktopApp extends StatelessWidget {
   final AudioPlayerService? audioPlayerService;
   final StorageService? storageService;
 
-  const ApolloDesktopApp({
+  const ObscurifyDesktopApp({
     super.key,
     this.audioPlayerService,
     this.storageService,
@@ -44,7 +44,7 @@ class ApolloDesktopApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Apollo',
+      title: 'Obscurify',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),

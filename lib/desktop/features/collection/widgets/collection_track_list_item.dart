@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:apollo/core/services/audio_player_service.dart';
-import 'package:apollo/core/services/plex/plex_services.dart';
-import 'package:apollo/core/database/database_service.dart';
-import 'package:apollo/desktop/features/album/album_page.dart';
-import 'package:apollo/desktop/features/artist/artist_page.dart';
+import 'package:obscurify/core/services/audio_player_service.dart';
+import 'package:obscurify/core/services/plex/plex_services.dart';
+import 'package:obscurify/core/database/database_service.dart';
+import 'package:obscurify/desktop/features/album/album_page.dart';
+import 'package:obscurify/desktop/features/artist/artist_page.dart';
 
 /// A single track list item for collection pages.
 /// Displays track info and handles play interactions.

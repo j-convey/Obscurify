@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:apollo/core/models/playlist.dart';
-import 'package:apollo/core/services/storage_service.dart';
-import 'package:apollo/core/services/audio_player_service.dart';
-import 'package:apollo/desktop/features/collection/collection_page.dart';
-import 'package:apollo/desktop/features/collection/widgets/collection_header.dart';
-import 'package:apollo/core/services/playlist_service.dart';
+import 'package:obscurify/core/models/playlist.dart';
+import 'package:obscurify/core/services/storage_service.dart';
+import 'package:obscurify/core/services/audio_player_service.dart';
+import 'package:obscurify/desktop/features/collection/collection_page.dart';
+import 'package:obscurify/desktop/features/collection/widgets/collection_header.dart';
+import 'package:obscurify/core/services/playlist_service.dart';
 
 class PlaylistsPage extends StatefulWidget {
   final Function(Widget) onNavigate;

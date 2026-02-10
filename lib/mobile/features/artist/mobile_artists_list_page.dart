@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:apollo/core/models/artist.dart';
-import 'package:apollo/core/database/database_service.dart';
-import 'package:apollo/core/services/storage_service.dart';
-import 'package:apollo/core/services/audio_player_service.dart';
+import 'package:obscurify/core/models/artist.dart';
+import 'package:obscurify/core/database/database_service.dart';
+import 'package:obscurify/core/services/storage_service.dart';
+import 'package:obscurify/core/services/audio_player_service.dart';
 import 'mobile_artist_page.dart';
 import 'widgets/artist_grid_item.dart';
 

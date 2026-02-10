@@ -2,7 +2,7 @@
 /// 
 /// Usage:
 /// ```dart
-/// import 'package:apollo/core/database/database.dart';
+/// import 'package:obscurify/core/database/database.dart';
 /// 
 /// final db = DatabaseService();
 /// 

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:apollo/core/services/audio_player_service.dart';
+import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:media_kit/media_kit.dart';
 
 void main() {

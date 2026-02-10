@@ -4,6 +4,6 @@ class PlexConstants {
 
   static const String plexApiUrl = 'https://clients.plex.tv';
   static const String plexAuthUrl = 'https://app.plex.tv';
-  static const String clientIdentifier = 'apollo-music-player';
-  static const String productName = 'Apollo';
+  static const String clientIdentifier = 'obscurify-music-player';
+  static const String productName = 'Obscurify';
 }

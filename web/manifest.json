@@ -1,6 +1,6 @@
 {
-    "name": "apollo",
-    "short_name": "apollo",
+    "name": "obscurify",
+    "short_name": "obscurify",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

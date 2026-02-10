@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:apollo/core/database/database_service.dart';
-import 'package:apollo/core/models/track.dart';
-import 'package:apollo/core/models/playlist.dart';
+import 'package:obscurify/core/database/database_service.dart';
+import 'package:obscurify/core/models/track.dart';
+import 'package:obscurify/core/models/playlist.dart';
 
 void main() {
   group('DatabaseService Unit Tests', () {

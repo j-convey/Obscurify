@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:apollo/core/services/plex/plex_services.dart';
-import 'package:apollo/core/services/storage_service.dart';
-import 'package:apollo/core/database/database_service.dart';
-import 'package:apollo/core/models/track.dart';
-import 'package:apollo/core/services/playlist_service.dart';
-import 'package:apollo/core/services/library_change_notifier.dart';
+import 'package:obscurify/core/services/plex/plex_services.dart';
+import 'package:obscurify/core/services/storage_service.dart';
+import 'package:obscurify/core/database/database_service.dart';
+import 'package:obscurify/core/models/track.dart';
+import 'package:obscurify/core/services/playlist_service.dart';
+import 'package:obscurify/core/services/library_change_notifier.dart';
 
 /// Shared business logic for server settings on both mobile and desktop.
 ///

@@ -1,4 +1,4 @@
-class ApolloStringUtils {
+class ObscurifyStringUtils {
   /// Sanitizes a string for sorting by removing special characters like ' and ( ).
   /// It skips leading symbols and ensures the string starts with a letter or number.
   static String toSortable(String text) {

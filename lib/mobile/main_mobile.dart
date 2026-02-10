@@ -8,16 +8,16 @@ void main() async {
   // Initialize media_kit for audio playback
   MediaKit.ensureInitialized();
 
-  runApp(const ApolloMobileApp());
+  runApp(const ObscurifyMobileApp());
 }
 
-class ApolloMobileApp extends StatelessWidget {
-  const ApolloMobileApp({super.key});
+class ObscurifyMobileApp extends StatelessWidget {
+  const ObscurifyMobileApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Apollo',
+      title: 'Obscurify',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(

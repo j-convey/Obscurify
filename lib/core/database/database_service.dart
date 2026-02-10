@@ -91,7 +91,7 @@ class DatabaseService {
     }
 
     final databasesPath = await getDatabasesPath();
-    final path = join(databasesPath, 'apollo_music.db');
+    final path = join(databasesPath, 'obscurify_music.db');
 
     return await openDatabase(
       path,
