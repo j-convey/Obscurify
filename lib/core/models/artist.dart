@@ -99,6 +99,8 @@ class Artist {
       'genre': genre ?? '',
       'country': country ?? '',
       'server_id': serverId,
+      'album_count': albumCount,
+      'track_count': trackCount,
       'added_at': addedAt ?? DateTime.now().millisecondsSinceEpoch,
       'updated_at': DateTime.now().millisecondsSinceEpoch,
     };

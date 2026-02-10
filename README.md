@@ -1,8 +1,8 @@
-# Apollo
+# Obscurify
 
 A modern, cross-platform music player built with Flutter that seamlessly integrates with Plex Media Server to provide a premium music streaming experience.
 
-![Apollo](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
+![Obscurify](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)
 ![Plex](https://img.shields.io/badge/Plex-E5A00D?style=for-the-badge&logo=plex&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white)
@@ -55,8 +55,8 @@ A modern, cross-platform music player built with Flutter that seamlessly integra
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/j-convey/apollo.git
-   cd apollo
+   git clone https://github.com/j-convey/Obscurify.git
+   cd Obscurify
    ```
 
 2. **Install dependencies**
@@ -92,6 +92,7 @@ flutter build linux --release
 
 ```
 lib/
+<<<<<<< HEAD
 ├── core/                    # Core application components
 │   ├── constants/          # App-wide constants
 │   ├── services/           # Business logic services
@@ -118,6 +119,52 @@ lib/
 │       ├── utils/
 │       └── widgets/
 └── main.dart               # Application entry point
+=======
+├── main.dart                          # Platform router
+├── core/                              # Headless shared logic
+│   ├── constants/
+│   ├── database/                      # DB service + repos + schema (cross-platform)
+│   ├── models/                        # Track, Album, Artist, Playlist
+│   ├── services/                      # AudioPlayer, Storage, Plex*, Playlist, AuthCheck
+│   ├── theme/                         # Shared ThemeData definitions
+│   └── utils/                         # string_utils, collection_utils (consolidated)
+├── shared/                            # Shared UI components
+│   └── widgets/                       # Headers, action buttons, cards, dialogs
+├── desktop/                           # Desktop app
+│   ├── main_desktop.dart              # WindowManager init
+│   ├── shell/                         # AppBar, WindowControls, NavButtons, PlayerBar
+│   └── features/                      # All current feature pages (moved as-is)
+│       ├── album/
+│       ├── artist/
+│       ├── authentication/
+│       ├── collection/
+│       ├── home/
+│       ├── music/
+│       ├── playlists/
+│       ├── profile/
+│       ├── settings/
+│       └── songs/
+└── mobile/                            # Android app (built fresh)
+    ├── main_mobile.dart
+    ├── shell/
+    └── features/
+```
+
+```
+lib/mobile/
+├── main_mobile.dart              # MaterialApp with mobile theme, no window_manager
+├── shell/
+│   ├── mobile_shell.dart         # Scaffold with BottomNavigationBar + mini player
+│   └── mini_player.dart          # Collapsed player bar, tappable to expand
+└── features/
+    ├── home/
+    ├── library/
+    ├── albums/
+    ├── artists/
+    ├── playlists/
+    ├── settings/
+    └── profile/
+>>>>>>> file-structure-refactor
 ```
 
 ### Key Technologies
@@ -158,7 +205,7 @@ The app automatically handles most configuration, but you can customize:
 
 ### First Time Setup
 
-1. **Launch Apollo**: Open the application on your desktop
+1. **Launch Obscurify**: Open the application on your desktop
 2. **Authenticate**: Click the settings icon and select "Server Settings"
 3. **PIN Authentication**: Follow the on-screen instructions to authenticate with Plex
 4. **Server Selection**: Choose your Plex Media Server from the available options
@@ -204,4 +251,4 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 ---
 
-**Apollo** - Bringing your music collection to life with modern desktop audio streaming.
+**Obscurify** - Bringing your music collection to life with modern desktop audio streaming.

@@ -7,6 +7,7 @@ class Playlist {
   final String? summary;
   final String? type;
   final bool smart;
+  final String? searchQuery;
   final String? composite;
   final int duration;
   final int leafCount;
@@ -21,6 +22,7 @@ class Playlist {
     this.summary,
     this.type,
     required this.smart,
+    this.searchQuery,
     this.composite,
     this.duration = 0,
     this.leafCount = 0,
@@ -35,6 +37,7 @@ class Playlist {
       summary: map['summary'] as String?,
       type: map['type'] as String?,
       smart: (map['smart'] as int?) == 1,
+      searchQuery: map['search_query'] as String?,
       composite: map['composite'] as String?,
       duration: (map['duration'] as int?) ?? 0,
       leafCount: (map['leaf_count'] as int?) ?? 0,
@@ -63,6 +66,7 @@ class Playlist {
       'summary': summary,
       'type': type,
       'smart': smart ? 1 : 0,
+      'search_query': searchQuery,
       'composite': composite,
       'duration': duration,
       'leaf_count': leafCount,
@@ -77,6 +81,7 @@ class Playlist {
       'summary': summary,
       'type': type,
       'smart': smart,
+      'searchQuery': searchQuery,
       'composite': composite,
       'duration': duration,
       'leafCount': leafCount,
@@ -90,6 +95,7 @@ class Playlist {
     String? summary,
     String? type,
     bool? smart,
+    String? searchQuery,
     String? composite,
     int? duration,
     int? leafCount,
@@ -102,6 +108,7 @@ class Playlist {
       summary: summary ?? this.summary,
       type: type ?? this.type,
       smart: smart ?? this.smart,
+      searchQuery: searchQuery ?? this.searchQuery,
       composite: composite ?? this.composite,
       duration: duration ?? this.duration,
       leafCount: leafCount ?? this.leafCount,

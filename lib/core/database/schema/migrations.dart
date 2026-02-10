@@ -1,11 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'views.dart';
 import 'indexes.dart';
+import 'triggers.dart';
 
 /// Database migration logic
 class MigrationSchema {
   /// Current database version
-  static const int currentVersion = 10;
+  static const int currentVersion = 11;
 
   /// Run migrations from oldVersion to newVersion
   static Future<void> migrate(dynamic db, int oldVersion, int newVersion) async {
@@ -45,6 +46,10 @@ class MigrationSchema {
 
     if (oldVersion < 10) {
       await _migrateToV10(db);
+    }
+
+    if (oldVersion < 11) {
+      await _migrateToV11(db);
     }
 
     debugPrint('DATABASE: Migration complete to version $newVersion');
@@ -190,14 +195,94 @@ class MigrationSchema {
 
   static Future<void> _migrateToV10(dynamic db) async {
     // Add UNIQUE constraint on tracks.rating_key for Plex API integration
-    // This ensures each track from Plex is only stored once, and allows
-    // direct queries to Plex API using rating_key without joining through albums
     try {
       await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_tracks_rating_key ON tracks(rating_key)');
       debugPrint('DATABASE: Migrated to version 10 - Added rating_key uniqueness for Plex integration');
     } catch (e) {
       debugPrint('DATABASE: Note - rating_key index may already exist: $e');
     }
+  }
+
+  static Future<void> _migrateToV11(dynamic db) async {
+    // --- 1. Denormalized counts: cache album_count and track_count on artists ---
+    await _safeAddColumn(db, 'artists', 'album_count INTEGER DEFAULT 0');
+    await _safeAddColumn(db, 'artists', 'track_count INTEGER DEFAULT 0');
+
+    // --- 2. Cache total_duration on albums to avoid GROUP BY + SUM in views ---
+    await _safeAddColumn(db, 'albums', 'total_duration INTEGER DEFAULT 0');
+
+    // --- 3. Smart playlists: store filter/query logic ---
+    await _safeAddColumn(db, 'playlists', 'search_query TEXT');
+
+    // --- 4. Create media_items table for structured media properties ---
+    // Enables efficient filtering by codec, bitrate, etc. without parsing JSON.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS media_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        track_id INTEGER NOT NULL,
+        part_key TEXT,
+        container TEXT,
+        codec TEXT,
+        bitrate INTEGER,
+        channels INTEGER,
+        sample_rate INTEGER,
+        bit_depth INTEGER,
+        duration INTEGER,
+        file_path TEXT,
+        file_size INTEGER,
+        FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE CASCADE
+      )
+    ''');
+
+    // --- 5. Create FTS5 virtual table for fast full-text search ---
+    // Supports prefix matching (e.g., "Beat*" matches "Beatles") and
+    // is significantly faster than LIKE '%query%' for global search.
+    try {
+      await db.execute('''
+        CREATE VIRTUAL TABLE IF NOT EXISTS tracks_fts USING fts5(
+          title,
+          artist_name,
+          album_name,
+          content=tracks,
+          content_rowid=id
+        )
+      ''');
+    } catch (e) {
+      debugPrint('DATABASE: FTS5 creation failed (may not be supported): $e');
+    }
+
+    // --- 6. Create triggers for data integrity ---
+    // Keep denormalized name/thumb columns in sync when parent records change.
+    await TriggerSchema.createAll(db);
+
+    // --- 7. Recreate views with simplified definitions (no more GROUP BY) ---
+    await ViewSchema.dropAll(db);
+    await ViewSchema.createAll(db);
+
+    // --- 8. Create new indexes (covering index, media_items indexes) ---
+    await IndexSchema.createAll(db);
+
+    // --- 9. Populate cached counts from existing data ---
+    await db.execute('''
+      UPDATE artists SET
+        album_count = (SELECT COUNT(*) FROM albums WHERE albums.artist_id = artists.id),
+        track_count = (SELECT COUNT(*) FROM tracks WHERE tracks.artist_id = artists.id)
+    ''');
+
+    await db.execute('''
+      UPDATE albums SET
+        total_duration = (SELECT COALESCE(SUM(duration), 0) FROM tracks WHERE tracks.album_id = albums.id)
+    ''');
+
+    // --- 10. Rebuild FTS index from existing track data ---
+    try {
+      await db.execute("INSERT INTO tracks_fts(tracks_fts) VALUES('rebuild')");
+    } catch (e) {
+      debugPrint('DATABASE: FTS rebuild failed: $e');
+    }
+
+    debugPrint('DATABASE: Migrated to version 11 - Added FTS5, cached counts, '
+        'media_items, triggers, covering index, WAL/FK pragmas');
   }
 
   /// Safely add a column (ignores error if column exists)

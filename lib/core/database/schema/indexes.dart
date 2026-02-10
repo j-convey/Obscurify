@@ -12,6 +12,11 @@ class IndexSchema {
     'CREATE INDEX IF NOT EXISTS idx_tracks_added ON tracks(added_at DESC)',
     'CREATE INDEX IF NOT EXISTS idx_tracks_rating ON tracks(user_rating)',
     
+    // Covering index for "All Tracks" list UI query.
+    // Includes title, artist_name, album_name, duration, thumb so the query
+    // can be satisfied entirely from the index without a table lookup.
+    'CREATE INDEX IF NOT EXISTS idx_tracks_all_list ON tracks(title COLLATE NOCASE, artist_name, album_name, duration, thumb)',
+    
     // Album indexes
     'CREATE INDEX IF NOT EXISTS idx_albums_artist ON albums(artist_id)',
     'CREATE INDEX IF NOT EXISTS idx_albums_year ON albums(year DESC)',
@@ -28,6 +33,11 @@ class IndexSchema {
     'CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON playlist_tracks(playlist_id)',
     'CREATE INDEX IF NOT EXISTS idx_playlist_tracks_track ON playlist_tracks(track_id)',
     'CREATE INDEX IF NOT EXISTS idx_playlist_tracks_position ON playlist_tracks(playlist_id, position)',
+    
+    // Media items indexes - enable filtering by codec, bitrate, etc.
+    'CREATE INDEX IF NOT EXISTS idx_media_items_track ON media_items(track_id)',
+    'CREATE INDEX IF NOT EXISTS idx_media_items_codec ON media_items(codec)',
+    'CREATE INDEX IF NOT EXISTS idx_media_items_bitrate ON media_items(bitrate)',
   ];
 
   /// Execute all index creation statements safely

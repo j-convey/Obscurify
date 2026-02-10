@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
+import '../database/database_service.dart';
 
 class AudioPlayerService extends ChangeNotifier {
   late final Player _player;
@@ -8,26 +9,31 @@ class AudioPlayerService extends ChangeNotifier {
   late final StreamSubscription<Duration> _durationSubscription;
   late final StreamSubscription<Duration> _positionSubscription;
   late final StreamSubscription<bool> _completedSubscription;
+  final DatabaseService _dbService = DatabaseService();
 
   Map<String, dynamic>? _currentTrack;
   bool _isPlaying = false;
+  bool _isInPlaylist = false; // Flag to track if current song is in any playlist
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
   String? _currentToken;
   String? _currentServerUrl;
   Map<String, String> _serverUrls = {}; // Map of serverId to serverUrl
+  bool _isDisposed = false; // Flag to track disposal state
 
   AudioPlayerService() {
     _player = Player();
     
     // Listen to player state changes
     _playingSubscription = _player.stream.playing.listen((playing) {
+      if (_isDisposed) return;
       _isPlaying = playing;
       notifyListeners();
     });
 
     // Listen to duration changes
     _durationSubscription = _player.stream.duration.listen((duration) {
+      if (_isDisposed) return;
       _duration = duration;
       notifyListeners();
     });
@@ -35,6 +41,7 @@ class AudioPlayerService extends ChangeNotifier {
     // Listen to position changes - throttle updates to reduce UI rebuilds
     Duration lastNotifiedPosition = Duration.zero;
     _positionSubscription = _player.stream.position.listen((position) {
+      if (_isDisposed) return;
       _position = position;
       // Only notify if position changed by at least 1 second to reduce rebuilds
       if ((position.inSeconds - lastNotifiedPosition.inSeconds).abs() >= 1) {
@@ -45,6 +52,7 @@ class AudioPlayerService extends ChangeNotifier {
 
     // Listen to completion
     _completedSubscription = _player.stream.completed.listen((completed) {
+      if (_isDisposed) return;
       if (completed) {
         _isPlaying = false;
         _position = Duration.zero;
@@ -60,6 +68,7 @@ class AudioPlayerService extends ChangeNotifier {
   // Getters
   Map<String, dynamic>? get currentTrack => _currentTrack;
   bool get isPlaying => _isPlaying;
+  bool get isInPlaylist => _isInPlaylist;
   Duration get duration => _duration;
   Duration get position => _position;
   String? get currentToken => _currentToken;
@@ -69,20 +78,46 @@ class AudioPlayerService extends ChangeNotifier {
 
   // Set server URLs map
   void setServerUrls(Map<String, String> urls) {
+    if (_isDisposed) return;
     _serverUrls = urls;
     debugPrint('PLAYER: Server URLs updated: ${_serverUrls.keys.join(", ")}');
   }
 
   // Setter for the play queue (without auto-playing)
   void setPlayQueue(List<Map<String, dynamic>> queue, int startIndex) {
+    if (_isDisposed) return;
     _playQueue = queue; // Reference the list directly to avoid copying large lists
     _currentIndex = startIndex;
     debugPrint('PLAYER: Queue set with ${_playQueue.length} tracks, starting at index $startIndex');
   }
 
+  // Check if current track is in any playlist
+  Future<void> _checkPlaylistStatus() async {
+    if (_currentTrack == null || _isDisposed) return;
+    
+    final ratingKey = _currentTrack!['ratingKey'] as String?;
+    if (ratingKey == null) return;
+
+    try {
+      final inPlaylist = await _dbService.playlists.isTrackInAnyPlaylist(ratingKey);
+      if (!_isDisposed) {
+        _isInPlaylist = inPlaylist;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error checking playlist status: $e');
+    }
+  }
+
+  // Public method to force refresh playlist status
+  void refreshPlaylistStatus() {
+    _checkPlaylistStatus();
+  }
+
   // Play a track
   Future<void> playTrack(
       Map<String, dynamic> track, String token, String serverUrl) async {
+    if (_isDisposed) return;
     try {
       debugPrint('PLAYER: ===== playTrack() called =====');
       debugPrint('PLAYER: Track title: ${track['title']}');
@@ -90,6 +125,7 @@ class AudioPlayerService extends ChangeNotifier {
       _currentTrack = track;
       _currentToken = token;
       _currentServerUrl = serverUrl;
+      _isInPlaylist = false; // Reset flag while loading
 
       // Construct the audio URL
       final media = track['Media'] as List<dynamic>?;
@@ -111,6 +147,9 @@ class AudioPlayerService extends ChangeNotifier {
 
       // Update UI immediately so player bar shows up
       notifyListeners();
+      
+      // Check playlist status in background
+      _checkPlaylistStatus();
 
       // Stop any current playback
       await _player.stop();
@@ -136,6 +175,7 @@ class AudioPlayerService extends ChangeNotifier {
 
   // Go to the next track in the queue
   Future<void> next() async {
+    if (_isDisposed) return;
     debugPrint('PLAYER: next() called, currentIndex: $_currentIndex, queueLength: ${_playQueue.length}');
     
     if (_playQueue.isEmpty) {
@@ -173,6 +213,7 @@ class AudioPlayerService extends ChangeNotifier {
 
   // Go to the previous track in the queue
   Future<void> previous() async {
+    if (_isDisposed) return;
     debugPrint('PLAYER: previous() called, currentIndex: $_currentIndex, queueLength: ${_playQueue.length}');
     
     if (_playQueue.isEmpty) {
@@ -217,26 +258,31 @@ class AudioPlayerService extends ChangeNotifier {
 
   // Toggle play/pause
   Future<void> togglePlayPause() async {
+    if (_isDisposed) return;
     await _player.playOrPause();
   }
 
   // Seek to position
   Future<void> seek(Duration position) async {
+    if (_isDisposed) return;
     await _player.seek(position);
   }
 
   // Stop playback
   Future<void> stop() async {
+    if (_isDisposed) return;
     await _player.stop();
     _currentTrack = null;
     _isPlaying = false;
     _position = Duration.zero;
     _duration = Duration.zero;
+    _isInPlaylist = false;
     notifyListeners();
   }
 
   // Set volume (0.0 to 1.0)
   Future<void> setVolume(double volume) async {
+    if (_isDisposed) return;
     await _player.setVolume(volume * 100); // media_kit uses 0-100
   }
 
@@ -257,12 +303,25 @@ class AudioPlayerService extends ChangeNotifier {
   }
 
   @override
-  void dispose() {
-    _playingSubscription.cancel();
-    _durationSubscription.cancel();
-    _positionSubscription.cancel();
-    _completedSubscription.cancel();
-    _player.dispose();
+  void notifyListeners() {
+    if (!_isDisposed) {
+      super.notifyListeners();
+    }
+  }
+
+  @override
+  Future<void> dispose() async {
+    _isDisposed = true;
+
+    // Cancel all subscriptions first
+    await _playingSubscription.cancel();
+    await _durationSubscription.cancel();
+    await _positionSubscription.cancel();
+    await _completedSubscription.cancel();
+
+    // Dispose player
+    await _player.dispose();
+
     super.dispose();
   }
 }

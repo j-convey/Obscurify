@@ -4,14 +4,17 @@ import 'dart:convert';
 class StorageService {
   static const String _plexTokenKey = 'plex_token';
   static const String _usernameKey = 'plex_username';
-  static const String _selectedServersKey =
-      'selected_servers'; // Legacy - kept for migration
+  static const String _selectedServersKey = 'selected_servers';
   static const String _profileImagePathKey = 'profile_image_path';
-  static const String _serverUrlKey = 'server_url'; // Legacy
-  static const String _serverUrlMapKey = 'server_url_map'; // Legacy
-  static const String _selectedServerKey = 'selected_server_id';
-  static const String _selectedLibraryKey = 'selected_library_key';
-  static const String _selectedServerUrlKey = 'selected_server_url';
+  static const String _serverUrlKey = 'server_url';
+  static const String _serverUrlMapKey = 'server_url_map';
+  
+  // AI API Keys
+  static const String _aiProviderKey = 'ai_provider';
+  static const String _openaiApiKey = 'openai_api_key';
+  static const String _geminiApiKey = 'gemini_api_key';
+  static const String _anthropicApiKey = 'anthropic_api_key';
+  static const String _ollamaUrlKey = 'ollama_url';
 
   // Save Plex token
   Future<void> savePlexToken(String token) async {
@@ -78,67 +81,39 @@ class StorageService {
     return {};
   }
 
-  // Get the URL for a specific server by machine identifier (legacy)
+  // Get the URL for a specific server by machine identifier
   Future<String?> getServerUrlById(String machineIdentifier) async {
     final urlMap = await getServerUrlMap();
     return urlMap[machineIdentifier];
   }
 
-  // ==================== NEW SINGLE SELECTION METHODS ====================
-
-  // Save selected server ID (single selection)
-  Future<void> saveSelectedServer(String serverId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_selectedServerKey, serverId);
-  }
-
-  // Get selected server ID (single selection)
-  Future<String?> getSelectedServer() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_selectedServerKey);
-  }
-
-  // Save selected library key (single selection)
-  Future<void> saveSelectedLibrary(String libraryKey) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_selectedLibraryKey, libraryKey);
-  }
-
-  // Get selected library key (single selection)
-  Future<String?> getSelectedLibrary() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_selectedLibraryKey);
-  }
-
-  // Save the selected server's URL (only set when user explicitly saves)
-  Future<void> saveSelectedServerUrl(String url) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_selectedServerUrlKey, url);
-  }
-
-  // Get the URL for the selected server (returns null if not yet saved)
+  // Get the URL for the server that has selected libraries
   Future<String?> getSelectedServerUrl() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_selectedServerUrlKey);
+    final selectedServers = await getSelectedServers();
+    final urlMap = await getServerUrlMap();
+
+    // Find the first server with selected libraries
+    for (var entry in selectedServers.entries) {
+      if (entry.value.isNotEmpty && urlMap.containsKey(entry.key)) {
+        return urlMap[entry.key];
+      }
+    }
+    return null;
   }
 
-  // ==================== LEGACY METHODS (kept for backward compatibility) ====================
-
-  // Save selected servers and libraries (legacy - multi-select)
+  // Save selected servers and libraries
   Future<void> saveSelectedServers(Map<String, List<String>> selections) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_selectedServersKey, json.encode(selections));
   }
 
-  // Get selected servers and libraries (legacy - multi-select)
+  // Get selected servers and libraries
   Future<Map<String, List<String>>> getSelectedServers() async {
     final prefs = await SharedPreferences.getInstance();
     final data = prefs.getString(_selectedServersKey);
     if (data != null) {
       final Map<String, dynamic> decoded = json.decode(data);
-      return decoded.map(
-        (key, value) => MapEntry(key, List<String>.from(value)),
-      );
+      return decoded.map((key, value) => MapEntry(key, List<String>.from(value)));
     }
     return {};
   }
@@ -150,8 +125,57 @@ class StorageService {
     await prefs.remove(_usernameKey);
     await prefs.remove(_selectedServersKey);
     await prefs.remove(_serverUrlMapKey);
-    await prefs.remove(_selectedServerKey);
-    await prefs.remove(_selectedLibraryKey);
-    await prefs.remove(_selectedServerUrlKey);
+  }
+
+  // --- AI Settings Methods ---
+
+  Future<void> saveAiProvider(String provider) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_aiProviderKey, provider);
+  }
+
+  Future<String?> getAiProvider() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_aiProviderKey);
+  }
+
+  Future<void> saveOpenAiApiKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_openaiApiKey, key);
+  }
+
+  Future<String?> getOpenAiApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_openaiApiKey);
+  }
+
+  Future<void> saveGeminiApiKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_geminiApiKey, key);
+  }
+
+  Future<String?> getGeminiApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_geminiApiKey);
+  }
+
+  Future<void> saveAnthropicApiKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_anthropicApiKey, key);
+  }
+
+  Future<String?> getAnthropicApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_anthropicApiKey);
+  }
+
+  Future<void> saveOllamaUrl(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_ollamaUrlKey, url);
+  }
+
+  Future<String?> getOllamaUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_ollamaUrlKey);
   }
 }

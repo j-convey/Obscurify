@@ -70,11 +70,11 @@ class TrackRepository extends BaseRepository {
     return maps.map(Track.fromDb).toList();
   }
 
-  /// Get liked tracks (rating >= 5)
+  /// Get liked tracks (rating >= 10)
   Future<List<Track>> getLiked() async {
     final maps = await rawQuery('''
       SELECT * FROM v_tracks_full 
-      WHERE user_rating >= 5.0
+      WHERE user_rating >= 10.0
       ORDER BY title COLLATE NOCASE ASC
     ''');
     return maps.map(Track.fromDb).toList();
@@ -90,9 +90,30 @@ class TrackRepository extends BaseRepository {
     return maps.map(Track.fromDb).toList();
   }
 
-  /// Search tracks by title, artist, or album
+  /// Search tracks by title, artist, or album.
+  /// Uses FTS5 for fast prefix-matching search (e.g., "Beat" matches "Beatles").
+  /// Falls back to LIKE-based search if FTS5 is not available.
   Future<List<Track>> search(String query, {int limit = 20}) async {
     if (query.trim().isEmpty) return [];
+
+    // Try FTS5 search first (faster, supports prefix matching)
+    try {
+      final ftsQuery = _buildFtsQuery(query);
+      if (ftsQuery.isNotEmpty) {
+        final maps = await rawQuery('''
+          SELECT v.* FROM tracks_fts fts
+          JOIN v_tracks_full v ON v.id = fts.rowid
+          WHERE tracks_fts MATCH ?
+          ORDER BY fts.rank
+          LIMIT ?
+        ''', [ftsQuery, limit]);
+        return maps.map(Track.fromDb).toList();
+      }
+    } catch (_) {
+      // FTS5 not available, fall through to LIKE
+    }
+
+    // Fallback: LIKE-based search
     final searchQuery = '%${query.toLowerCase()}%';
     final maps = await rawQuery('''
       SELECT * FROM v_tracks_full 
@@ -103,6 +124,21 @@ class TrackRepository extends BaseRepository {
       LIMIT ?
     ''', [searchQuery, searchQuery, searchQuery, limit]);
     return maps.map(Track.fromDb).toList();
+  }
+
+  /// Build an FTS5 query string with prefix matching from user input.
+  /// Escapes special characters and adds '*' suffix for prefix matching.
+  String _buildFtsQuery(String query) {
+    final words = query.trim().split(RegExp(r'\s+'));
+    return words
+        .where((w) => w.isNotEmpty)
+        .map((w) {
+          // Remove FTS5 special characters to prevent query injection
+          final escaped = w.replaceAll(RegExp(r'["\*\(\)\-\+\^]'), '');
+          return escaped.isNotEmpty ? '"$escaped"*' : '';
+        })
+        .where((w) => w.isNotEmpty)
+        .join(' ');
   }
 
   /// Get track count
@@ -119,8 +155,8 @@ class TrackRepository extends BaseRepository {
   // WRITE OPERATIONS
   // ============================================================
 
-  /// Save tracks with automatic artist/album extraction
-  /// Progress callback reports (current, total) as tracks are saved
+  /// Save tracks with automatic artist/album extraction (optimized for Mobile)
+  /// Uses batch operations to minimize platform channel overhead.
   Future<void> saveAll(
     String serverId,
     String libraryKey,
@@ -129,54 +165,72 @@ class TrackRepository extends BaseRepository {
   }) async {
     final db = await getDatabase();
     
-    // Delete existing tracks for this library
-    await delete(
-      'tracks',
-      where: 'server_id = ? AND library_key = ?',
-      whereArgs: [serverId, libraryKey],
-    );
-
-    debugPrint('DATABASE: Starting batch save of ${tracks.length} tracks...');
-    final stopwatch = Stopwatch()..start();
-
-    // Use batching for MUCH better performance
+    // Use a transaction for performance and integrity
     await db.transaction((txn) async {
-      // Batch size for progress updates
-      const batchSize = 100;
-      
-      for (int i = 0; i < tracks.length; i++) {
-        final track = tracks[i];
-        int? artistId;
-        int? albumId;
+      // 1. Delete existing tracks for this library to prevent duplicates
+      await txn.delete(
+        'tracks',
+        where: 'server_id = ? AND library_key = ?',
+        whereArgs: [serverId, libraryKey],
+      );
 
-        // Upsert artist
-        if (track.artistRatingKey != null && track.artistName.isNotEmpty) {
-          final artist = Artist(
+      // 2. Identify and Insert Unique Artists
+      // We process all artists first to ensure foreign keys can be resolved
+      final uniqueArtists = <String, Artist>{};
+      for (final track in tracks) {
+        if (track.artistRatingKey != null && 
+            track.artistName.isNotEmpty && 
+            !uniqueArtists.containsKey(track.artistRatingKey)) {
+          uniqueArtists[track.artistRatingKey!] = Artist(
             ratingKey: track.artistRatingKey!,
             name: track.artistName,
             thumb: track.artistThumb,
             serverId: serverId,
             addedAt: track.addedAt,
           );
-          
-          await txn.insert(
-            'artists',
-            artist.toDb(),
-            conflictAlgorithm: ConflictAlgorithm.ignore,
-          );
-          
-          final artistResult = await txn.query(
-            'artists',
-            where: 'rating_key = ?',
-            whereArgs: [track.artistRatingKey],
-            limit: 1,
-          );
-          artistId = artistResult.isNotEmpty ? artistResult.first['id'] as int? : null;
         }
+      }
 
-        // Upsert album
-        if (track.albumRatingKey != null && track.albumName.isNotEmpty) {
-          final album = Album(
+      if (uniqueArtists.isNotEmpty) {
+        final artistBatch = txn.batch();
+        for (final artist in uniqueArtists.values) {
+          artistBatch.insert(
+            'artists', 
+            artist.toDb(), 
+            conflictAlgorithm: ConflictAlgorithm.ignore
+          );
+        }
+        await artistBatch.commit(noResult: true);
+      }
+
+      // 3. Retrieve Artist IDs
+      // We need the internal database IDs to link albums and tracks
+      final artistIds = <String, int>{};
+      if (uniqueArtists.isNotEmpty) {
+        final List<Map<String, dynamic>> results = await txn.query(
+          'artists',
+          columns: ['rating_key', 'id'],
+          where: 'server_id = ?',
+          whereArgs: [serverId],
+        );
+        
+        for (final row in results) {
+          final ratingKey = row['rating_key'] as String;
+          final id = row['id'] as int;
+          artistIds[ratingKey] = id;
+        }
+      }
+
+      // 4. Identify and Insert Unique Albums
+      final uniqueAlbums = <String, Album>{};
+      for (final track in tracks) {
+        if (track.albumRatingKey != null && 
+            track.albumName.isNotEmpty && 
+            !uniqueAlbums.containsKey(track.albumRatingKey)) {
+          
+          final artistId = track.artistRatingKey != null ? artistIds[track.artistRatingKey] : null;
+
+          uniqueAlbums[track.albumRatingKey!] = Album(
             ratingKey: track.albumRatingKey!,
             title: track.albumName,
             artistId: artistId,
@@ -186,48 +240,108 @@ class TrackRepository extends BaseRepository {
             serverId: serverId,
             addedAt: track.addedAt,
           );
-          
-          await txn.insert(
-            'albums',
-            album.toDb(),
-            conflictAlgorithm: ConflictAlgorithm.ignore,
-          );
-          
-          final albumResult = await txn.query(
-            'albums',
-            where: 'rating_key = ?',
-            whereArgs: [track.albumRatingKey],
-            limit: 1,
-          );
-          albumId = albumResult.isNotEmpty ? albumResult.first['id'] as int? : null;
         }
+      }
 
-        // Insert track with foreign keys
-        final trackWithFks = track.copyWith(
-          artistId: artistId,
-          albumId: albumId,
+      if (uniqueAlbums.isNotEmpty) {
+        final albumBatch = txn.batch();
+        for (final album in uniqueAlbums.values) {
+          albumBatch.insert(
+            'albums', 
+            album.toDb(), 
+            conflictAlgorithm: ConflictAlgorithm.ignore
+          );
+        }
+        await albumBatch.commit(noResult: true);
+      }
+
+      // 5. Retrieve Album IDs
+      final albumIds = <String, int>{};
+      if (uniqueAlbums.isNotEmpty) {
+        final List<Map<String, dynamic>> results = await txn.query(
+          'albums',
+          columns: ['rating_key', 'id'],
+          where: 'server_id = ?',
+          whereArgs: [serverId],
         );
-        await txn.insert('tracks', trackWithFks.toDb());
-
-        // Report progress every batchSize tracks
-        if (onProgress != null && (i % batchSize == 0 || i == tracks.length - 1)) {
-          onProgress(i + 1, tracks.length);
+        
+        for (final row in results) {
+          final ratingKey = row['rating_key'] as String;
+          final id = row['id'] as int;
+          albumIds[ratingKey] = id;
         }
+      }
+
+      // 6. Insert Tracks in Batches
+      // Batching here prevents UI freeze on mobile by allowing UI to render between batches
+      const batchSize = 500; 
+      for (int batchStart = 0; batchStart < tracks.length; batchStart += batchSize) {
+        final batchEnd = (batchStart + batchSize).clamp(0, tracks.length);
+        final batch = tracks.sublist(batchStart, batchEnd);
+        
+        final trackBatch = txn.batch();
+
+        for (final track in batch) {
+          int? artistId;
+          int? albumId;
+
+          if (track.artistRatingKey != null) {
+            artistId = artistIds[track.artistRatingKey];
+          }
+          
+          if (track.albumRatingKey != null) {
+            albumId = albumIds[track.albumRatingKey];
+          }
+
+          final trackWithFks = track.copyWith(
+            artistId: artistId,
+            albumId: albumId,
+          );
+          trackBatch.insert('tracks', trackWithFks.toDb());
+        }
+
+        await trackBatch.commit(noResult: true);
+
+        onProgress?.call(batchEnd, tracks.length);
+      }
+
+      // 7. Update Sync Metadata
+      await txn.insert(
+        'sync_metadata',
+        {
+          'server_id': serverId,
+          'library_key': libraryKey,
+          'last_sync': DateTime.now().millisecondsSinceEpoch,
+          'track_count': tracks.length,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      // 8. Update cached counts on artists and albums
+      // This avoids expensive GROUP BY + COUNT in views at read time.
+      await txn.execute('''
+        UPDATE artists SET
+          album_count = (SELECT COUNT(*) FROM albums WHERE albums.artist_id = artists.id),
+          track_count = (SELECT COUNT(*) FROM tracks WHERE tracks.artist_id = artists.id)
+        WHERE server_id = ?
+      ''', [serverId]);
+
+      await txn.execute('''
+        UPDATE albums SET
+          track_count = (SELECT COUNT(*) FROM tracks WHERE tracks.album_id = albums.id),
+          total_duration = (SELECT COALESCE(SUM(duration), 0) FROM tracks WHERE tracks.album_id = albums.id)
+        WHERE server_id = ?
+      ''', [serverId]);
+
+      // 9. Rebuild FTS5 search index
+      try {
+        await txn.execute("INSERT INTO tracks_fts(tracks_fts) VALUES('rebuild')");
+      } catch (e) {
+        // FTS5 may not be available on this platform
       }
     });
 
-    stopwatch.stop();
-    debugPrint('DATABASE: Saved ${tracks.length} tracks in ${stopwatch.elapsedMilliseconds}ms');
-
-    // Update sync metadata
-    await insert('sync_metadata', {
-      'server_id': serverId,
-      'library_key': libraryKey,
-      'last_sync': DateTime.now().millisecondsSinceEpoch,
-      'track_count': tracks.length,
-    });
-
-    debugPrint('DATABASE: Sync metadata updated for $serverId/$libraryKey');
+    debugPrint('DATABASE: Saved ${tracks.length} tracks for $serverId/$libraryKey');
   }
 
   /// Update track rating

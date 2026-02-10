@@ -1,0 +1,71 @@
+import 'package:intl/intl.dart';
+
+/// Utility functions for collection and album pages
+class CollectionUtils {
+  /// Format milliseconds duration to mm:ss format
+  static String formatDuration(int milliseconds) {
+    final duration = Duration(milliseconds: milliseconds);
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  /// Format nullable milliseconds duration to mm:ss format
+  static String formatDurationNullable(int? milliseconds) {
+    if (milliseconds == null || milliseconds == 0) return '0:00';
+    return formatDuration(milliseconds);
+  }
+
+  /// Format Unix timestamp to readable date
+  static String formatDate(int? addedAt) {
+    if (addedAt == null) return 'Unknown';
+    final date = DateTime.fromMillisecondsSinceEpoch(addedAt * 1000);
+    return DateFormat('MMM d, y').format(date);
+  }
+
+  /// Set of special characters to skip at the beginning of strings
+  static const String _specialCharsToSkip = '!\"#\$%&\'()*+,-./:;<=>?@[\\\\]^_`{|}~';
+
+  /// Extract the first meaningful character's position in a string
+  /// Skips leading special characters (punctuation, brackets, quotes, etc)
+  /// Works with all Unicode characters (English, Japanese, Arabic, etc)
+  static String _stripLeadingSpecialChars(String str) {
+    final lowerStr = str.toLowerCase();
+    int i = 0;
+    // Skip all special characters at the start
+    while (i < lowerStr.length && _specialCharsToSkip.contains(lowerStr[i])) {
+      i++;
+    }
+    return lowerStr.substring(i);
+  }
+
+  /// Sort tracks by given column
+  static void sortTracks(
+    List<Map<String, dynamic>> tracks,
+    String column,
+    bool ascending,
+  ) {
+    tracks.sort((a, b) {
+      dynamic aValue = a[column];
+      dynamic bValue = b[column];
+
+      if (aValue == null && bValue == null) return 0;
+      if (aValue == null) return 1;
+      if (bValue == null) return -1;
+
+      int comparison;
+      if (aValue is String && bValue is String) {
+        // For string sorting, strip leading special characters
+        final aStripped = _stripLeadingSpecialChars(aValue);
+        final bStripped = _stripLeadingSpecialChars(bValue);
+        comparison = aStripped.compareTo(bStripped);
+      } else if (aValue is int && bValue is int) {
+        comparison = aValue.compareTo(bValue);
+      } else {
+        comparison = aValue.toString().compareTo(bValue.toString());
+      }
+
+      return ascending ? comparison : -comparison;
+    });
+  }
+}

@@ -30,6 +30,18 @@ class PlaylistRepository extends BaseRepository {
     return Playlist.fromDb(maps.first);
   }
 
+  /// Get playlist by Title
+  Future<Playlist?> getByTitle(String title) async {
+    final maps = await query(
+      'playlists',
+      where: 'title = ?',
+      whereArgs: [title],
+      limit: 1,
+    );
+    if (maps.isEmpty) return null;
+    return Playlist.fromDb(maps.first);
+  }
+
   /// Get playlists for a server
   Future<List<Playlist>> getByServer(String serverId) async {
     final maps = await query(
@@ -57,6 +69,28 @@ class PlaylistRepository extends BaseRepository {
   /// Get playlist count
   Future<int> getCount() async {
     return count('playlists');
+  }
+
+  /// Check if a track is in any playlist
+  Future<bool> isTrackInAnyPlaylist(String trackKey) async {
+    final maps = await rawQuery('''
+      SELECT 1 FROM playlist_tracks pt
+      JOIN tracks t ON pt.track_id = t.id
+      WHERE t.rating_key = ?
+      LIMIT 1
+    ''', [trackKey]);
+    return maps.isNotEmpty;
+  }
+
+  /// Check if a track is in a specific playlist
+  Future<bool> isTrackInPlaylist(String playlistId, String trackKey) async {
+    final maps = await rawQuery('''
+      SELECT 1 FROM playlist_tracks pt
+      JOIN tracks t ON pt.track_id = t.id
+      WHERE pt.playlist_id = ? AND t.rating_key = ?
+      LIMIT 1
+    ''', [playlistId, trackKey]);
+    return maps.isNotEmpty;
   }
 
   // ============================================================
@@ -93,7 +127,16 @@ class PlaylistRepository extends BaseRepository {
   // WRITE OPERATIONS
   // ============================================================
 
-  /// Save playlists
+  /// Create or Update a playlist
+  Future<void> save(Playlist playlist) async {
+    await insert(
+      'playlists',
+      playlist.toDb(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Save multiple playlists
   Future<void> saveAll(List<Playlist> playlists) async {
     final db = await getDatabase();
     final batch = db.batch();
@@ -110,7 +153,76 @@ class PlaylistRepository extends BaseRepository {
     debugPrint('DATABASE: Saved ${playlists.length} playlists');
   }
 
-  /// Save playlist tracks
+  /// Add a track to a playlist
+  Future<void> addTrack(String playlistId, String trackKey) async {
+    // 1. Get the internal track ID
+    final trackResults = await query(
+      'tracks',
+      where: 'rating_key = ?', // Using rating_key which maps to trackKey in DB usually
+      whereArgs: [trackKey],
+      limit: 1,
+    );
+
+    if (trackResults.isEmpty) {
+      debugPrint('DATABASE: Track $trackKey not found, cannot add to playlist');
+      return;
+    }
+    final trackId = trackResults.first['id'];
+
+    // 2. Get the current max position
+    final positionResult = await rawQuery('''
+      SELECT MAX(position) as max_pos FROM playlist_tracks WHERE playlist_id = ?
+    ''', [playlistId]);
+    final maxPos = (positionResult.first['max_pos'] as int?) ?? -1;
+
+    // 3. Insert
+    await insert(
+      'playlist_tracks',
+      {
+        'playlist_id': playlistId,
+        'track_id': trackId,
+        'position': maxPos + 1,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+    
+    // 4. Update playlist count
+    await rawQuery('''
+      UPDATE playlists 
+      SET leaf_count = (SELECT COUNT(*) FROM playlist_tracks WHERE playlist_id = ?)
+      WHERE id = ?
+    ''', [playlistId, playlistId]);
+  }
+
+  /// Remove a track from a playlist
+  Future<void> removeTrack(String playlistId, String trackKey) async {
+    // 1. Get the internal track ID
+    final trackResults = await query(
+      'tracks',
+      where: 'rating_key = ?',
+      whereArgs: [trackKey],
+      limit: 1,
+    );
+
+    if (trackResults.isEmpty) return;
+    final trackId = trackResults.first['id'];
+
+    // 2. Delete
+    await delete(
+      'playlist_tracks',
+      where: 'playlist_id = ? AND track_id = ?',
+      whereArgs: [playlistId, trackId],
+    );
+
+    // 3. Update playlist count
+    await rawQuery('''
+      UPDATE playlists 
+      SET leaf_count = (SELECT COUNT(*) FROM playlist_tracks WHERE playlist_id = ?)
+      WHERE id = ?
+    ''', [playlistId, playlistId]);
+  }
+
+  /// Save playlist tracks (bulk)
   Future<void> saveTracks(String playlistId, List<Track> tracks) async {
     // Delete existing associations
     await delete('playlist_tracks', where: 'playlist_id = ?', whereArgs: [playlistId]);

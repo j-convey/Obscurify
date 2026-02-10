@@ -55,7 +55,10 @@ class Track {
   });
 
   /// Returns a version of the title sanitized for alphabetical sorting.
-  String get sortableTitle => ApolloStringUtils.toSortable(title);
+  String get sortableTitle => ObscurifyStringUtils.toSortable(title);
+
+  /// Returns null if the string is null or empty (treats '' as null)
+  static String? _nonEmpty(String? s) => (s != null && s.isNotEmpty) ? s : null;
 
   /// Check if track is liked (rating >= 5)
   bool get isLiked => (userRating ?? 0) >= 5.0;
@@ -84,9 +87,9 @@ class Track {
         (map['artist_name_stored'] as String?) ??
         'Unknown Artist';
     final albumThumb =
-        (map['album_thumb'] as String?) ?? (map['parent_thumb'] as String?);
+        _nonEmpty(map['album_thumb'] as String?) ?? _nonEmpty(map['parent_thumb'] as String?);
     final artistThumb =
-        (map['artist_thumb'] as String?) ?? (map['grandparent_thumb'] as String?);
+        _nonEmpty(map['artist_thumb'] as String?) ?? _nonEmpty(map['grandparent_thumb'] as String?);
     final albumRatingKey =
         (map['album_rating_key'] as String?) ?? (map['parent_rating_key'] as String?);
     final artistRatingKey = (map['artist_rating_key'] as String?) ??
@@ -113,7 +116,7 @@ class Track {
       trackNumber: map['track_number'] as int?,
       discNumber: (map['disc_number'] as int?) ?? 1,
       duration: (map['duration'] as int?) ?? 0,
-      thumb: map['thumb'] as String?,
+      thumb: _nonEmpty(map['thumb'] as String?),
       albumThumb: albumThumb,
       artistThumb: artistThumb,
       year: map['year'] as int?,

@@ -28,9 +28,7 @@ class PlexArtistService {
         }
       }
 
-      debugPrint(
-        'ARTIST_SERVICE: Failed to fetch artist. Status: ${response.statusCode}',
-      );
+      debugPrint('ARTIST_SERVICE: Failed to fetch artist. Status: ${response.statusCode}');
       return null;
     } catch (e) {
       debugPrint('ARTIST_SERVICE: Error fetching artist: $e');
@@ -63,8 +61,7 @@ class PlexArtistService {
       }
 
       debugPrint(
-        'ARTIST_SERVICE: Failed to fetch tracks. Status: ${response.statusCode}',
-      );
+          'ARTIST_SERVICE: Failed to fetch tracks. Status: ${response.statusCode}');
       return [];
     } catch (e) {
       debugPrint('ARTIST_SERVICE: Error fetching tracks: $e');
@@ -97,8 +94,7 @@ class PlexArtistService {
       }
 
       debugPrint(
-        'ARTIST_SERVICE: Failed to fetch albums. Status: ${response.statusCode}',
-      );
+          'ARTIST_SERVICE: Failed to fetch albums. Status: ${response.statusCode}');
       return [];
     } catch (e) {
       debugPrint('ARTIST_SERVICE: Error fetching albums: $e');
@@ -106,7 +102,7 @@ class PlexArtistService {
     }
   }
 
-  /// Fetches tracks for a specific album.
+  /// Fetches tracks for an album (children of an album).
   /// Returns a list of track data maps.
   Future<List<Map<String, dynamic>>> getAlbumTracks({
     required String albumId,
@@ -125,14 +121,13 @@ class PlexArtistService {
         final tracks = data['MediaContainer']?['Metadata'] as List<dynamic>?;
 
         if (tracks != null) {
-          debugPrint('ARTIST_SERVICE: Found ${tracks.length} tracks in album');
+          debugPrint('ARTIST_SERVICE: Found ${tracks.length} tracks for album');
           return tracks.cast<Map<String, dynamic>>();
         }
       }
 
       debugPrint(
-        'ARTIST_SERVICE: Failed to fetch album tracks. Status: ${response.statusCode}',
-      );
+          'ARTIST_SERVICE: Failed to fetch album tracks. Status: ${response.statusCode}');
       return [];
     } catch (e) {
       debugPrint('ARTIST_SERVICE: Error fetching album tracks: $e');
