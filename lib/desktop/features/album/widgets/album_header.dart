@@ -71,7 +71,7 @@ class AlbumHeader extends StatelessWidget {
           // Album cover
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: imageUrl != null
+            child: imageUrl != null && imageUrl!.isNotEmpty
                 ? Image.network(
                     imageUrl!,
                     width: 232,

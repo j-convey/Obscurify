@@ -119,12 +119,31 @@ class AlbumPage extends StatelessWidget {
             );
           }
 
+          // Resolve album image: prefer provided imageUrl, fall back to
+          // the first track's thumb — the same approach the player bar uses.
+          String? resolvedImageUrl = imageUrl;
+          if ((resolvedImageUrl == null || resolvedImageUrl.isEmpty) &&
+              tracksToDisplay.isNotEmpty &&
+              currentToken != null) {
+            final firstTrack = tracksToDisplay.first;
+            final thumb = firstTrack['thumb'] as String?;
+            if (thumb != null && thumb.isNotEmpty) {
+              final serverId = firstTrack['serverId'] as String?;
+              final sUrl = serverId != null
+                  ? (serverUrls?[serverId] ?? currentServerUrl)
+                  : currentServerUrl;
+              if (sUrl != null) {
+                resolvedImageUrl = '$sUrl$thumb?X-Plex-Token=$currentToken';
+              }
+            }
+          }
+
           return AlbumDisplay(
             title: title,
             subtitle: subtitle,
             audioPlayerService: audioPlayerService,
             tracks: tracksToDisplay,
-            imageUrl: imageUrl,
+            imageUrl: resolvedImageUrl,
             gradientColors: gradientColors,
             currentToken: currentToken,
             serverUrls: serverUrls,

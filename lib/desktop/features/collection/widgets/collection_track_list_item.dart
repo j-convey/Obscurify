@@ -373,10 +373,21 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
     debugPrint('ALBUM_NAV: Current track: ${widget.track['title']}');
     debugPrint('ALBUM_NAV: parent_rating_key in track: ${widget.track['parentRatingKey']}');
     
-    // Get album art from track's parentThumb
+    // Get album art from track's parentThumb, falling back to track thumb
     final albumThumb = widget.track['parentThumb'] as String?;
-    final imageUrl = albumThumb != null && widget.currentServerUrl != null && widget.currentToken != null
-        ? '${widget.currentServerUrl}$albumThumb?X-Plex-Token=${widget.currentToken}'
+    final trackThumb = widget.track['thumb'] as String?;
+    final thumbPath = (albumThumb != null && albumThumb.isNotEmpty)
+        ? albumThumb
+        : (trackThumb != null && trackThumb.isNotEmpty ? trackThumb : null);
+    
+    // Resolve the correct server URL for this track's server
+    final trackServerId = widget.track['serverId'] as String?;
+    final resolvedServerUrl = trackServerId != null
+        ? (widget.serverUrls[trackServerId] ?? widget.currentServerUrl)
+        : widget.currentServerUrl;
+    
+    final imageUrl = thumbPath != null && resolvedServerUrl != null && widget.currentToken != null
+        ? '$resolvedServerUrl$thumbPath?X-Plex-Token=${widget.currentToken}'
         : null;
     
     final albumPage = AlbumPage(
