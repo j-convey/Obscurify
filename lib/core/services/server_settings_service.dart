@@ -271,10 +271,11 @@ class ServerSettingsService {
         );
 
         debugPrint(
-            'Found ${playlists.length} playlists. Fetching items...');
+            'Found ${playlists.length} playlists from server. Filtering by synced libraries...');
 
+        int savedCount = 0;
         for (final playlist in playlists) {
-          onStatusChange('Syncing Playlist: ${playlist.title}');
+          onStatusChange('Checking Playlist: ${playlist.title}');
 
           try {
             final tracksJson = await _playlistService.getPlaylistTracks(
@@ -291,14 +292,34 @@ class ServerSettingsService {
                     ))
                 .toList();
 
-            await _dbService.playlists.saveTracks(playlist.id, playlistTracks);
-            debugPrint(
-                'Saved ${playlistTracks.length} tracks for playlist ${playlist.title}');
+            // Check if any tracks from this playlist exist in synced libraries
+            bool hasTracksInSyncedLibs = false;
+            for (final track in playlistTracks) {
+              final existsInDb = await _dbService.tracks.getByRatingKey(track.ratingKey);
+              if (existsInDb != null) {
+                hasTracksInSyncedLibs = true;
+                break;
+              }
+            }
+
+            if (hasTracksInSyncedLibs) {
+              await _dbService.playlists.saveTracks(playlist.id, playlistTracks);
+              savedCount++;
+              debugPrint(
+                  'Saved playlist "${playlist.title}" (${playlistTracks.length} tracks)');
+            } else {
+              // Delete playlist if it was previously saved but no longer has tracks
+              await _dbService.playlists.deleteById(playlist.id);
+              debugPrint(
+                  'Skipped playlist "${playlist.title}" - no tracks from synced libraries');
+            }
           } catch (e) {
             debugPrint(
                 'Error syncing items for playlist ${playlist.title}: $e');
           }
         }
+        
+        debugPrint('Saved $savedCount/${playlists.length} playlists with tracks from synced libraries');
       } catch (e) {
         debugPrint('Error syncing playlists: $e');
         // Don't fail the whole sync if playlists fail
