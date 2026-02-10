@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/models/playlist.dart';
 import '../../../../core/models/track.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../shared/widgets/plex_image.dart';
 
 class AddToPlaylistSheet extends StatefulWidget {
   final String trackId; // This is the ratingKey
@@ -19,9 +21,12 @@ class AddToPlaylistSheet extends StatefulWidget {
 
 class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
   final DatabaseService _db = DatabaseService();
+  final StorageService _storageService = StorageService();
   List<Playlist> _playlists = [];
   Map<String, bool> _playlistMembership = {}; // playlistId -> is track in it
   bool _isLoading = true;
+  String? _token;
+  String? _serverUrl;
 
   @override
   void initState() {
@@ -30,6 +35,9 @@ class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
   }
 
   Future<void> _loadData() async {
+    final token = await _storageService.getPlexToken();
+    final serverUrl = await _storageService.getSelectedServerUrl() ??
+        await _storageService.getServerUrl();
     final playlists = await _db.playlists.getAll();
     final membership = <String, bool>{};
 
@@ -40,6 +48,8 @@ class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
 
     if (mounted) {
       setState(() {
+        _token = token;
+        _serverUrl = serverUrl;
         _playlists = playlists;
         _playlistMembership = membership;
         _isLoading = false;
@@ -191,15 +201,16 @@ class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
 
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    leading: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[800],
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: PlexImage(
+                        serverUrl: _serverUrl,
+                        token: _token,
+                        thumbPath: playlist.composite,
+                        width: 48,
+                        height: 48,
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      // TODO: Show playlist image
-                      child: const Icon(Icons.music_note, color: Colors.grey),
                     ),
                     title: Text(
                       playlist.title,
