@@ -3,6 +3,7 @@ import 'package:obscurify/core/database/database_service.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/services/storage_service.dart';
 import 'package:obscurify/desktop/features/artist/artist_page.dart';
+import 'package:obscurify/desktop/features/browse/browse_page.dart';
 
 class AppBarSearchBar extends StatefulWidget {
   final AudioPlayerService? audioPlayerService;
@@ -407,6 +408,26 @@ class _AppBarSearchBarState extends State<AppBarSearchBar> {
                 },
               ),
             const SizedBox(width: 12),
+            // Vertical separator
+            Container(
+              width: 1,
+              height: 24,
+              color: Colors.grey[700],
+            ),
+            const SizedBox(width: 8),
+            // Browse button
+            IconButton(
+              icon: const Icon(Icons.library_music, color: Colors.white, size: 24),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              tooltip: 'Browse',
+              onPressed: () {
+                if (widget.onNavigate != null) {
+                  widget.onNavigate!(BrowsePage(onNavigate: widget.onNavigate));
+                }
+              },
+            ),
+            const SizedBox(width: 8),
           ],
         ),
       ),
