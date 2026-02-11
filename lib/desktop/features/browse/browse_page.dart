@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:obscurify/desktop/features/artist/artists_list_page.dart';
 import 'package:obscurify/desktop/features/playlists/playlists_page.dart';
 import 'package:obscurify/desktop/features/songs/songs_page.dart';
 
@@ -52,7 +53,9 @@ class BrowsePage extends StatelessWidget {
                     const Color(0xFF509B95),
                     Icons.person,
                     () {
-                      // TODO: Navigate to Artists
+                      if (onNavigate != null) {
+                        onNavigate!(ArtistsListPage(onNavigate: onNavigate));
+                      }
                     },
                   ),
                   _buildBrowseTile(
