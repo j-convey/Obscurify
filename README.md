@@ -92,34 +92,6 @@ flutter build linux --release
 
 ```
 lib/
-<<<<<<< HEAD
-├── core/                    # Core application components
-│   ├── constants/          # App-wide constants
-│   ├── services/           # Business logic services
-│   │   ├── audio_player_service.dart    # Audio playback management
-│   │   ├── plex_auth_service.dart       # Plex authentication
-│   │   ├── storage_service.dart         # Local data persistence
-│   │   └── database_service.dart        # SQLite database operations
-│   ├── theme/              # UI theming (future use)
-│   ├── utils/              # Utility functions (future use)
-│   └── widgets/            # Shared UI components
-│       ├── apollo_app_bar.dart          # Custom app bar
-│       ├── player_bar.dart              # Playback controls
-│       └── app_bar/                     # App bar sub-components
-├── features/               # Feature-based modules
-│   ├── authentication/     # User authentication
-│   ├── home/               # Home screen
-│   ├── music/              # Music library browsing
-│   ├── player/             # Audio player (future use)
-│   ├── playlists/          # Playlist management
-│   ├── settings/           # App settings
-│   │   └── server/         # Server configuration
-│   └── library/            # Library page and details
-│       ├── library_page.dart
-│       ├── utils/
-│       └── widgets/
-└── main.dart               # Application entry point
-=======
 ├── main.dart                          # Platform router
 ├── core/                              # Headless shared logic
 │   ├── constants/
@@ -164,7 +136,6 @@ lib/mobile/
     ├── playlists/
     ├── settings/
     └── profile/
->>>>>>> file-structure-refactor
 ```
 
 ### Key Technologies
