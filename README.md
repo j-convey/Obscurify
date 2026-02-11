@@ -9,6 +9,9 @@ A modern, cross-platform music player built with Flutter that seamlessly integra
 ![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=white)
 
+<img width="2879" height="1717" alt="image" src="https://github.com/user-attachments/assets/34ed6c3b-8aa2-4e22-8851-63b1aa89766b" />
+
+
 ## 🌟 Features
 
 ### 🎵 Core Music Features
