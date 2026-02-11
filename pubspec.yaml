@@ -50,17 +50,17 @@ dependencies:
   url_launcher: ^6.2.4
   
   # Window management for custom title bar
-  window_manager: ^0.4.3
+  window_manager: ^0.5.1
   
   # Date formatting
-  intl: ^0.19.0
+  intl: ^0.20.2
   
   # Audio playback - media_kit for better FLAC support on Windows
   media_kit: ^1.1.10+1
   media_kit_libs_audio: ^1.0.5
 
   # File picking for profile pictures
-  file_picker: ^8.1.4
+  file_picker: ^10.3.10
 
 dev_dependencies:
   flutter_test:
