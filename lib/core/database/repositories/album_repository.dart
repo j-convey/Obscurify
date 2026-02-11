@@ -67,6 +67,19 @@ class AlbumRepository extends BaseRepository {
     return maps.map(Album.fromDb).toList();
   }
 
+  /// Get albums by release year (newest releases first)
+  Future<List<Album>> getByReleaseYear({int limit = 20}) async {
+    final maps = await rawQuery('''
+      SELECT * FROM v_albums_full 
+      ORDER BY 
+        CASE WHEN year IS NOT NULL AND year > 0 THEN 0 ELSE 1 END,
+        year DESC, 
+        title COLLATE NOCASE ASC
+      LIMIT ?
+    ''', [limit]);
+    return maps.map(Album.fromDb).toList();
+  }
+
   /// Search albums by title or artist
   Future<List<Album>> search(String query, {int limit = 20}) async {
     if (query.trim().isEmpty) return [];

@@ -63,14 +63,15 @@ class HomeDataService {
   // New Releases (recently added albums)
   // ---------------------------------------------------------------
 
-  /// Returns recently added albums as [CarouselItem]s.
+  /// Returns albums sorted by release year (newest releases first) as [CarouselItem]s.
   Future<List<CarouselItem>> getNewReleases({
     required String serverUrl,
     required String token,
     int limit = 20,
   }) async {
     try {
-      final albums = await _db.albums.getRecent(limit: limit);
+      final albums = await _db.albums.getByReleaseYear(limit: limit);
+      debugPrint('HOME_DATA_SERVICE: getNewReleases found ${albums.length} albums');
 
       // For each album, find a track that belongs to it and use that
       // track's thumb.  This is the exact pattern the collection page
@@ -87,21 +88,34 @@ class HomeDataService {
         }
       }
 
-      return albums.map((album) {
-        // Use the track's thumb — this is what the player bar and
-        // collection page use successfully.
+      debugPrint('HOME_DATA_SERVICE: matched tracks for ${trackByAlbum.length}/${albums.length} albums');
+
+      final items = albums.map((album) {
+        // Prefer the track's albumThumb (from the joined albums table),
+        // then fall back to the track's own thumb, then the album's thumb.
         final matchedTrack = trackByAlbum[album.ratingKey];
-        final thumbToUse = matchedTrack?.thumb;
+        final thumbToUse = matchedTrack?.albumThumb ??
+            matchedTrack?.thumb ??
+            album.thumb;
+
+        final imageUrl = _buildImageUrl(
+          thumbToUse,
+          serverUrl: serverUrl,
+          token: token,
+        );
+
+        debugPrint('HOME_DATA_SERVICE: Album "${album.title}" '
+            'albumThumb=${album.thumb}, '
+            'trackThumb=${matchedTrack?.thumb}, '
+            'trackAlbumThumb=${matchedTrack?.albumThumb}, '
+            'thumbToUse=$thumbToUse, '
+            'imageUrl=$imageUrl');
 
         return CarouselItem(
           id: album.ratingKey,
           title: album.title,
           subtitle: _albumSubtitle(album),
-          imageUrl: _buildImageUrl(
-            thumbToUse,
-            serverUrl: serverUrl,
-            token: token,
-          ),
+          imageUrl: imageUrl,
           type: CarouselItemType.album,
           data: {
             'ratingKey': album.ratingKey,
@@ -114,6 +128,11 @@ class HomeDataService {
           },
         );
       }).toList();
+
+      debugPrint('HOME_DATA_SERVICE: returning ${items.length} carousel items, '
+          '${items.where((i) => i.imageUrl != null && i.imageUrl!.isNotEmpty).length} have images');
+
+      return items;
     } catch (e) {
       debugPrint('HOME_DATA_SERVICE: Error getting new releases: $e');
       return [];

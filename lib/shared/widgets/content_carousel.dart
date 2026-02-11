@@ -239,11 +239,14 @@ class _CarouselCardState extends State<_CarouselCard> {
                               fit: BoxFit.cover,
                               width: imageSize,
                               height: imageSize,
-                              errorBuilder: (_, __, ___) => Icon(
-                                _fallbackIcon,
-                                color: Colors.grey,
-                                size: 48,
-                              ),
+                              errorBuilder: (_, error, ___) {
+                                debugPrint('CAROUSEL_IMAGE_ERROR: "${widget.item.title}" url=${widget.item.imageUrl} error=$error');
+                                return Icon(
+                                  _fallbackIcon,
+                                  color: Colors.grey,
+                                  size: 48,
+                                );
+                              },
                             )
                           : Icon(
                               _fallbackIcon,

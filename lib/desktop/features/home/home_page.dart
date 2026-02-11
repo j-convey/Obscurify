@@ -43,7 +43,6 @@ class _HomePageState extends State<HomePage> {
   final StorageService _storageService = StorageService();
   final DatabaseService _dbService = DatabaseService();
 
-  List<CarouselItem> _recentlyPlayed = [];
   List<CarouselItem> _newReleases = [];
   bool _isLoading = true;
   String? _resolvedServerUrl;
@@ -76,10 +75,22 @@ class _HomePageState extends State<HomePage> {
 
       token ??= await _storageService.getPlexToken();
 
+      // Prefer the stored selected server URL (set during sync/settings)
+      // as it uses the connection that was validated to work
+      if (serverUrl == null || serverUrl.isEmpty) {
+        serverUrl = await _storageService.getSelectedServerUrl();
+      }
+
       if (token != null && (serverUrl == null || serverUrl.isEmpty)) {
         _resolvedServerUrls = await _serverService.fetchServerUrlMap(token);
         if (_resolvedServerUrls.isNotEmpty) {
           serverUrl = _resolvedServerUrls.values.first;
+        }
+      } else if (token != null) {
+        // Still load the URL map for navigation purposes
+        _resolvedServerUrls = await _storageService.getServerUrlMap();
+        if (_resolvedServerUrls.isEmpty) {
+          _resolvedServerUrls = await _serverService.fetchServerUrlMap(token);
         }
       }
 
@@ -92,21 +103,19 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
-      final results = await Future.wait([
-        _homeDataService.getRecentlyPlayed(
-          serverUrl: serverUrl,
-          token: token,
-        ),
-        _homeDataService.getNewReleases(
-          serverUrl: serverUrl,
-          token: token,
-        ),
-      ]);
+      final newReleases = await _homeDataService.getNewReleases(
+        serverUrl: serverUrl,
+        token: token,
+      );
+
+      debugPrint('HOME_PAGE: got ${newReleases.length} new releases');
+      for (final item in newReleases.take(3)) {
+        debugPrint('HOME_PAGE: item "${item.title}" imageUrl=${item.imageUrl}');
+      }
 
       if (mounted) {
         setState(() {
-          _recentlyPlayed = results[0];
-          _newReleases = results[1];
+          _newReleases = newReleases;
           _isLoading = false;
         });
       }
@@ -262,38 +271,28 @@ class _HomePageState extends State<HomePage> {
 
               const SizedBox(height: 32),
 
-              // Recently played carousel
+              // New releases carousel
               if (_isLoading)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 32),
                   child: Center(child: CircularProgressIndicator()),
                 )
-              else if (_recentlyPlayed.isEmpty && _newReleases.isEmpty)
+              else if (_newReleases.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 48),
                   child: Center(
                     child: Text(
-                      'No recent activity',
+                      'No new releases',
                       style: TextStyle(color: Colors.grey),
                     ),
                   ),
                 )
-              else ...[
-                ContentCarousel(
-                  title: 'Recently Played',
-                  items: _recentlyPlayed,
-                  onItemTap: _onCarouselItemTap,
-                ),
-
-                const SizedBox(height: 24),
-
-                // New releases carousel
+              else
                 ContentCarousel(
                   title: 'New Releases',
                   items: _newReleases,
                   onItemTap: _onCarouselItemTap,
                 ),
-              ],
             ],
           ),
         ),
