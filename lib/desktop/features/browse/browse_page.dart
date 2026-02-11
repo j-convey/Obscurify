@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:obscurify/desktop/features/playlists/playlists_page.dart';
+import 'package:obscurify/desktop/features/songs/songs_page.dart';
 
 class BrowsePage extends StatelessWidget {
   final void Function(Widget)? onNavigate;
@@ -40,7 +42,9 @@ class BrowsePage extends StatelessWidget {
                     const Color(0xFFDC148C),
                     Icons.library_music,
                     () {
-                      // TODO: Navigate to Library
+                      if (onNavigate != null) {
+                        onNavigate!(SongsPage(onNavigate: onNavigate));
+                      }
                     },
                   ),
                   _buildBrowseTile(
@@ -56,7 +60,9 @@ class BrowsePage extends StatelessWidget {
                     const Color(0xFF4D64A4),
                     Icons.playlist_play,
                     () {
-                      // TODO: Navigate to Playlists
+                      if (onNavigate != null) {
+                        onNavigate!(PlaylistsPage(onNavigate: onNavigate!));
+                      }
                     },
                   ),
                   _buildBrowseTile(
