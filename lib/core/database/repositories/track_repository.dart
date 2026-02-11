@@ -305,7 +305,81 @@ class TrackRepository extends BaseRepository {
         onProgress?.call(batchEnd, tracks.length);
       }
 
-      // 7. Update Sync Metadata
+      // 7. Populate media_items table with structured audio quality data
+      // First, clear existing media_items for tracks in this library
+      await txn.rawDelete('''
+        DELETE FROM media_items WHERE track_id IN (
+          SELECT id FROM tracks WHERE server_id = ? AND library_key = ?
+        )
+      ''', [serverId, libraryKey]);
+
+      // Retrieve track IDs we just inserted so we can link media_items
+      final trackIdRows = await txn.query(
+        'tracks',
+        columns: ['id', 'rating_key'],
+        where: 'server_id = ? AND library_key = ?',
+        whereArgs: [serverId, libraryKey],
+      );
+      final trackIdMap = <String, int>{};
+      for (final row in trackIdRows) {
+        trackIdMap[row['rating_key'] as String] = row['id'] as int;
+      }
+
+      // Extract media properties from each track's media data
+      final mediaBatch = txn.batch();
+      int mediaItemCount = 0;
+      for (final track in tracks) {
+        final trackId = trackIdMap[track.ratingKey];
+        if (trackId == null || track.media.isEmpty) continue;
+
+        for (final mediaItem in track.media) {
+          if (mediaItem is! Map<String, dynamic>) continue;
+          final parts = mediaItem['Part'] as List?;
+          if (parts == null || parts.isEmpty) continue;
+
+          final part = parts[0] as Map<String, dynamic>;
+
+          // Find the audio stream (streamType 2)
+          int? sampleRate;
+          int? bitDepth;
+          String? codec;
+          int? channels;
+          final streams = part['Stream'] as List?;
+          if (streams != null) {
+            for (final stream in streams) {
+              if (stream is Map<String, dynamic> && stream['streamType'] == 2) {
+                sampleRate = stream['samplingRate'] as int?;
+                bitDepth = stream['bitDepth'] as int?;
+                codec = stream['codec'] as String?;
+                channels = stream['channels'] as int?;
+                break;
+              }
+            }
+          }
+
+          mediaBatch.insert('media_items', {
+            'track_id': trackId,
+            'part_key': part['key'] as String?,
+            'container': mediaItem['container'] as String?,
+            'codec': codec ?? mediaItem['audioCodec'] as String?,
+            'bitrate': mediaItem['bitrate'] as int?,
+            'channels': channels ?? mediaItem['audioChannels'] as int?,
+            'sample_rate': sampleRate,
+            'bit_depth': bitDepth,
+            'duration': mediaItem['duration'] as int?,
+            'file_path': part['file'] as String?,
+            'file_size': part['size'] as int?,
+          });
+          mediaItemCount++;
+        }
+      }
+
+      if (mediaItemCount > 0) {
+        await mediaBatch.commit(noResult: true);
+      }
+      debugPrint('DATABASE: Inserted $mediaItemCount media_items for $serverId/$libraryKey');
+
+      // 8. Update Sync Metadata
       await txn.insert(
         'sync_metadata',
         {
@@ -317,7 +391,7 @@ class TrackRepository extends BaseRepository {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
-      // 8. Update cached counts on artists and albums
+      // 9. Update cached counts on artists and albums
       // This avoids expensive GROUP BY + COUNT in views at read time.
       await txn.execute('''
         UPDATE artists SET
@@ -333,7 +407,7 @@ class TrackRepository extends BaseRepository {
         WHERE server_id = ?
       ''', [serverId]);
 
-      // 9. Rebuild FTS5 search index
+      // 10. Rebuild FTS5 search index
       try {
         await txn.execute("INSERT INTO tracks_fts(tracks_fts) VALUES('rebuild')");
       } catch (e) {

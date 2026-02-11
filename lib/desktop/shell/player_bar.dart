@@ -3,6 +3,7 @@ import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/services/plex/plex_services.dart';
 import 'package:obscurify/core/database/database_service.dart';
 import 'package:obscurify/desktop/features/artist/artist_page.dart';
+import 'package:obscurify/core/utils/audio_quality_utils.dart';
 
 class PlayerBar extends StatefulWidget {
   final AudioPlayerService playerService;
@@ -47,6 +48,17 @@ class _PlayerBarState extends State<PlayerBar> {
         if (track == null) {
           return const SizedBox.shrink();
         }
+
+        // Debug: Log track quality info
+        debugPrint('PLAYER_BAR: ═══════════════════════════════════════');
+        debugPrint('PLAYER_BAR: Track: ${track['title']}');
+        debugPrint('PLAYER_BAR: audioCodec: ${track['audioCodec']}');
+        debugPrint('PLAYER_BAR: container: ${track['container']}');
+        debugPrint('PLAYER_BAR: sampleRate: ${track['sampleRate']}');
+        debugPrint('PLAYER_BAR: bitDepth: ${track['bitDepth']}');
+        debugPrint('PLAYER_BAR: bitrate: ${track['bitrate']} kbps');
+        debugPrint('PLAYER_BAR: audioQuality: ${track['audioQuality']}');
+        debugPrint('PLAYER_BAR: Media has Stream: ${track['Media'] is List && (track['Media'] as List).isNotEmpty ? (track['Media'][0]['Part']?[0]?['Stream'] != null) : false}');
 
         // Check like status from track data
         final userRating = track['user_rating'] as double?;
@@ -343,6 +355,57 @@ class _PlayerBarState extends State<PlayerBar> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
+                      // Audio quality tier badge
+                      Builder(
+                        builder: (context) {
+                          final tier = AudioQualityUtils.getTier(track);
+                          final Color textColor;
+                          final Color borderColor;
+                          switch (tier) {
+                            case AudioQualityTier.max:
+                              textColor = const Color(0xFFD4A017);
+                              borderColor = const Color(0xFF7A5C0F);
+                            case AudioQualityTier.high:
+                              textColor = Colors.grey[300]!;
+                              borderColor = Colors.grey[600]!;
+                            case AudioQualityTier.low:
+                              textColor = Colors.grey[500]!;
+                              borderColor = Colors.grey[700]!;
+                          }
+
+                          // Build tooltip with details
+                          final tooltipParts = <String>[];
+                          final codec = track['audioCodec'] as String?;
+                          if (codec != null) tooltipParts.add(codec.toUpperCase());
+                          final quality = track['audioQuality'] as String?;
+                          if (quality != null) tooltipParts.add(quality);
+                          final bitrate = track['bitrate'] as int?;
+                          if (bitrate != null) tooltipParts.add('$bitrate kbps');
+
+                          return Tooltip(
+                            message: tooltipParts.isNotEmpty
+                                ? tooltipParts.join(' • ')
+                                : tier.label,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: borderColor, width: 1.5),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                tier.label,
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
                       IconButton(
                         icon: const Icon(Icons.queue_music, size: 20),
                         color: Colors.grey[400],

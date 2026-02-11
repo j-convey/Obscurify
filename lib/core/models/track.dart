@@ -63,6 +63,80 @@ class Track {
   /// Check if track is liked (rating >= 5)
   bool get isLiked => (userRating ?? 0) >= 5.0;
 
+  // ============================================================
+  // AUDIO QUALITY HELPERS
+  // ============================================================
+
+  /// Returns the first audio stream from the media data, or null.
+  Map<String, dynamic>? get _audioStream {
+    if (media.isEmpty) return null;
+    try {
+      final parts = (media[0] as Map<String, dynamic>?)?['Part'] as List?;
+      if (parts == null || parts.isEmpty) return null;
+      final streams = (parts[0] as Map<String, dynamic>?)?['Stream'] as List?;
+      if (streams == null) return null;
+      // streamType 2 = audio
+      return streams
+          .cast<Map<String, dynamic>>()
+          .where((s) => s['streamType'] == 2)
+          .firstOrNull;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Sample rate in Hz (e.g. 44100, 48000, 96000), or null if unavailable.
+  int? get sampleRate => _audioStream?['samplingRate'] as int?;
+
+  /// Bit depth (e.g. 16, 24, 32), or null if unavailable.
+  int? get bitDepth => _audioStream?['bitDepth'] as int?;
+
+  /// Audio codec from the media level (e.g. "flac", "aac", "mp3").
+  String? get audioCodec {
+    if (media.isEmpty) return null;
+    return (media[0] as Map<String, dynamic>?)?['audioCodec'] as String?;
+  }
+
+  /// Audio channels count (e.g. 2 for stereo).
+  int? get audioChannels {
+    if (media.isEmpty) return null;
+    return (media[0] as Map<String, dynamic>?)?['audioChannels'] as int?;
+  }
+
+  /// Overall bitrate in kbps from the media level.
+  int? get bitrate {
+    if (media.isEmpty) return null;
+    return (media[0] as Map<String, dynamic>?)?['bitrate'] as int?;
+  }
+
+  /// Container format (e.g. "flac", "mp4", "mp3").
+  String? get container {
+    if (media.isEmpty) return null;
+    return (media[0] as Map<String, dynamic>?)?['container'] as String?;
+  }
+
+  /// Human-readable audio quality string (e.g. "96 kHz / 24-bit", "44.1 kHz / 16-bit").
+  /// Returns null if quality info is unavailable.
+  String? get audioQuality {
+    final sr = sampleRate;
+    final bd = bitDepth;
+    if (sr == null && bd == null) return null;
+
+    final parts = <String>[];
+    if (sr != null) {
+      // Convert Hz to kHz (e.g. 44100 -> 44.1, 96000 -> 96)
+      final kHz = sr / 1000.0;
+      // Show decimal only if not a whole number
+      parts.add(kHz == kHz.roundToDouble()
+          ? '${kHz.toInt()} kHz'
+          : '${kHz.toStringAsFixed(1)} kHz');
+    }
+    if (bd != null) {
+      parts.add('$bd-bit');
+    }
+    return parts.join(' / ');
+  }
+
   /// Creates a Track from database row (includes view columns)
   factory Track.fromDb(Map<String, dynamic> map) {
     // Parse media data
@@ -228,6 +302,13 @@ class Track {
       'parentRatingKey': albumRatingKey,
       'parentTitle': albumName,
       'parentThumb': albumThumb,
+      'sampleRate': sampleRate,
+      'bitDepth': bitDepth,
+      'audioCodec': audioCodec,
+      'audioChannels': audioChannels,
+      'bitrate': bitrate,
+      'container': container,
+      'audioQuality': audioQuality,
     };
   }
 

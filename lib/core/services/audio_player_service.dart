@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 import '../database/database_service.dart';
+import 'plex/plex_api_client.dart';
 
 class AudioPlayerService extends ChangeNotifier {
   late final Player _player;
@@ -10,6 +11,7 @@ class AudioPlayerService extends ChangeNotifier {
   late final StreamSubscription<Duration> _positionSubscription;
   late final StreamSubscription<bool> _completedSubscription;
   final DatabaseService _dbService = DatabaseService();
+  final PlexApiClient _plexApiClient = PlexApiClient();
 
   Map<String, dynamic>? _currentTrack;
   bool _isPlaying = false;
@@ -151,6 +153,9 @@ class AudioPlayerService extends ChangeNotifier {
       // Check playlist status in background
       _checkPlaylistStatus();
 
+      // Fetch full metadata to get audio quality (sampleRate, bitDepth)
+      _enrichTrackMetadata();
+
       // Stop any current playback
       await _player.stop();
 
@@ -170,6 +175,108 @@ class AudioPlayerService extends ChangeNotifier {
       debugPrint('PLAYER: ===== ERROR playing track =====');
       debugPrint('PLAYER: Error: $e');
       debugPrint('PLAYER: Stack trace: $stackTrace');
+    }
+  }
+
+  /// Fetches full track metadata from Plex to get Stream-level audio quality
+  /// data (sampleRate, bitDepth) that isn't available in the bulk listing.
+  Future<void> _enrichTrackMetadata() async {
+    final track = _currentTrack;
+    final token = _currentToken;
+    final serverUrl = _currentServerUrl;
+    if (track == null || token == null || serverUrl == null) return;
+
+    // Skip if we already have quality data
+    if (track['sampleRate'] != null && track['bitDepth'] != null) {
+      debugPrint('PLAYER: Track already has quality data, skipping enrichment');
+      return;
+    }
+
+    final ratingKey = track['ratingKey']?.toString();
+    if (ratingKey == null) {
+      debugPrint('PLAYER: No ratingKey, cannot enrich metadata');
+      return;
+    }
+
+    try {
+      debugPrint('PLAYER: Fetching full metadata for ratingKey: $ratingKey');
+      final url = '$serverUrl/library/metadata/$ratingKey';
+      final response = await _plexApiClient.get(url, token: token);
+
+      if (response.statusCode == 200) {
+        final data = _plexApiClient.decodeJson(response);
+        final metadata = data['MediaContainer']?['Metadata'] as List?;
+
+        if (metadata != null && metadata.isNotEmpty) {
+          final fullTrack = metadata[0] as Map<String, dynamic>;
+          final media = fullTrack['Media'] as List?;
+
+          if (media != null && media.isNotEmpty) {
+            final mediaItem = media[0] as Map<String, dynamic>;
+            final parts = mediaItem['Part'] as List?;
+
+            if (parts != null && parts.isNotEmpty) {
+              final streams =
+                  (parts[0] as Map<String, dynamic>)['Stream'] as List?;
+
+              debugPrint('PLAYER: Full metadata has ${streams?.length ?? 0} streams');
+
+              if (streams != null) {
+                final audioStream = streams
+                    .cast<Map<String, dynamic>>()
+                    .where((s) => s['streamType'] == 2)
+                    .firstOrNull;
+
+                if (audioStream != null) {
+                  final samplingRate = audioStream['samplingRate'];
+                  final bitDepth = audioStream['bitDepth'];
+
+                  debugPrint('PLAYER: Enriched - samplingRate: $samplingRate, bitDepth: $bitDepth');
+
+                  // Update the track map with quality data
+                  track['sampleRate'] = samplingRate is int
+                      ? samplingRate
+                      : int.tryParse(samplingRate?.toString() ?? '');
+                  track['bitDepth'] = bitDepth is int
+                      ? bitDepth
+                      : int.tryParse(bitDepth?.toString() ?? '');
+
+                  // Also update codec/container if missing
+                  track['audioCodec'] ??= mediaItem['audioCodec'];
+                  track['container'] ??= mediaItem['container'];
+                  track['bitrate'] ??= mediaItem['bitrate'];
+
+                  // Build audioQuality string
+                  final sr = track['sampleRate'] as int?;
+                  final bd = track['bitDepth'] as int?;
+                  if (sr != null || bd != null) {
+                    final qualityParts = <String>[];
+                    if (sr != null) {
+                      final kHz = sr / 1000.0;
+                      qualityParts.add(kHz == kHz.roundToDouble()
+                          ? '${kHz.toInt()} kHz'
+                          : '${kHz.toStringAsFixed(1)} kHz');
+                    }
+                    if (bd != null) qualityParts.add('$bd-bit');
+                    track['audioQuality'] = qualityParts.join(' / ');
+                  }
+
+                  debugPrint('PLAYER: Track enriched - audioQuality: ${track['audioQuality']}');
+
+                  // Trigger UI rebuild with updated quality data
+                  if (!_isDisposed) notifyListeners();
+                } else {
+                  debugPrint('PLAYER: No audio stream (streamType==2) found');
+                }
+              }
+            }
+          }
+        }
+      } else {
+        debugPrint('PLAYER: Metadata fetch failed with status ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('PLAYER: Error enriching track metadata: $e');
     }
   }
 
