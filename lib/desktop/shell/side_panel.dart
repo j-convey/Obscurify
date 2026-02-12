@@ -83,14 +83,7 @@ class _SidePanelState extends State<SidePanel> {
             clipBehavior: Clip.hardEdge,
             decoration: BoxDecoration(
               color: const Color(0xFF121212),
-              border: Border(
-                right: BorderSide(
-                  color: (_isHandleHovered || _isDragging)
-                      ? Colors.grey[500]!
-                      : Colors.grey[850] ?? const Color(0xFF1A1A1A),
-                  width: 1,
-                ),
-              ),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
               children: [

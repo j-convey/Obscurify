@@ -147,7 +147,7 @@ class _MainScreenState extends State<MainScreen> {
       authService: PlexAuthService(),
       onAuthenticationSuccess: _onAuthenticationSuccess,
       child: Scaffold(
-        backgroundColor: const Color(0xFF121212),
+        backgroundColor: Colors.black,
         body: Column(
           children: [
             ObscurifyAppBar(
@@ -164,11 +164,23 @@ class _MainScreenState extends State<MainScreen> {
               onProfileTap: _onProfileTap,
             ),
             Expanded(
-              child: Row(
-                children: [
-                  const SidePanel(),
-                  Expanded(child: _currentPage),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4, right: 4, bottom: 4),
+                child: Row(
+                  children: [
+                    const SidePanel(),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          color: const Color(0xFF121212),
+                          child: _currentPage,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             PlayerBar(
