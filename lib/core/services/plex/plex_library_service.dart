@@ -163,4 +163,81 @@ class PlexLibraryService {
         })
         .toList();
   }
+
+  /// Fetches all albums from a library.
+  Future<List<Map<String, dynamic>>> getAlbums(
+    String token,
+    String serverUrl,
+    String libraryKey,
+  ) async {
+    try {
+      debugPrint('--- LIBRARY SERVICE: getAlbums called ---');
+      debugPrint('Server URL: $serverUrl');
+      debugPrint('Library Key: $libraryKey');
+
+      // Fetch albums (type=9) with all metadata fields
+      final url = '$serverUrl/library/sections/$libraryKey/all?type=9&includeExternalMedia=1';
+
+      final response = await _apiClient.getWithTimeout(
+        url,
+        token: token,
+        timeout: const Duration(seconds: 30),
+      );
+
+      debugPrint('Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = _apiClient.decodeJson(response);
+
+        if (data['MediaContainer'] != null) {
+          final metadata = data['MediaContainer']['Metadata'];
+
+          if (metadata == null) {
+            debugPrint('WARNING - Metadata is null!');
+            return [];
+          }
+
+          final albums = metadata as List<dynamic>;
+          debugPrint('Found ${albums.length} albums');
+
+          return _mapAlbums(albums);
+        }
+      }
+      return [];
+    } catch (e, stackTrace) {
+      debugPrint('EXCEPTION in getAlbums: $e');
+      debugPrint('Stack trace: $stackTrace');
+      return [];
+    }
+  }
+
+  /// Maps raw album data to a standardized format.
+  List<Map<String, dynamic>> _mapAlbums(List<dynamic> albums) {
+    return albums.map((album) {
+      final originallyAvailableAt = album['originallyAvailableAt'] as String?;
+      final year = album['year'] as int?;
+      
+      if (originallyAvailableAt != null) {
+        debugPrint('ALBUM_FETCH_DEBUG: Album "${album['title']}" has originallyAvailableAt=$originallyAvailableAt, year=$year');
+      }
+      
+      return {
+        'ratingKey': album['ratingKey']?.toString() ?? '',
+        'title': album['title'] as String? ?? 'Unknown Album',
+        'parentTitle': album['parentTitle'] as String?,
+        'parentRatingKey': album['parentRatingKey']?.toString(),
+        'thumb': album['thumb'] as String?,
+        'art': album['art'] as String?,
+        'year': year,
+        'originallyAvailableAt': originallyAvailableAt,
+        'genre': album['Genre'] != null && (album['Genre'] as List).isNotEmpty
+            ? album['Genre'][0]['tag']
+            : null,
+        'studio': album['studio'] as String?,
+        'summary': album['summary'] as String?,
+        'leafCount': album['leafCount'] as int? ?? 0,
+        'addedAt': album['addedAt'] as int?,
+      };
+    }).toList();
+  }
 }

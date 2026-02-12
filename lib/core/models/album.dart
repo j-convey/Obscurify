@@ -12,6 +12,7 @@ class Album {
   final String? thumb;
   final String? art;
   final int? year;
+  final String? originallyAvailableAt;
   final String? genre;
   final String? studio;
   final String? summary;
@@ -34,6 +35,7 @@ class Album {
     this.thumb,
     this.art,
     this.year,
+    this.originallyAvailableAt,
     this.genre,
     this.studio,
     this.summary,
@@ -59,6 +61,7 @@ class Album {
       thumb: map['thumb'] as String?,
       art: map['art'] as String?,
       year: map['year'] as int?,
+      originallyAvailableAt: map['originally_available_at'] as String?,
       genre: map['genre'] as String?,
       studio: map['studio'] as String?,
       summary: map['summary'] as String?,
@@ -81,6 +84,7 @@ class Album {
       thumb: json['thumb'],
       art: json['art'],
       year: json['year'],
+      originallyAvailableAt: json['originallyAvailableAt'] as String?,
       genre: json['Genre'] != null && (json['Genre'] as List).isNotEmpty
           ? json['Genre'][0]['tag']
           : null,
@@ -116,6 +120,7 @@ class Album {
       'thumb': thumb ?? '',
       'art': art ?? '',
       'year': year ?? 0,
+      'originally_available_at': originallyAvailableAt,
       'genre': genre ?? '',
       'studio': studio ?? '',
       'summary': summary ?? '',
@@ -139,6 +144,7 @@ class Album {
       'thumb': thumb,
       'art': art,
       'year': year,
+      'originallyAvailableAt': originallyAvailableAt,
       'genre': genre,
       'studio': studio,
       'summary': summary,

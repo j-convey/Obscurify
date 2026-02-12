@@ -42,11 +42,31 @@ class TrackRepository extends BaseRepository {
 
   /// Get tracks for an album
   Future<List<Track>> getByAlbum(String albumRatingKey) async {
+    debugPrint('TRACK_REPOSITORY: getByAlbum called with albumRatingKey="$albumRatingKey"');
+    
+    // Query by parent_rating_key which is the track's direct reference to its parent album
     final maps = await rawQuery('''
       SELECT * FROM v_tracks_full 
-      WHERE album_rating_key = ?
+      WHERE parent_rating_key = ?
       ORDER BY disc_number ASC, track_number ASC, title COLLATE NOCASE ASC
     ''', [albumRatingKey]);
+    
+    debugPrint('TRACK_REPOSITORY: Found ${maps.length} tracks for album "$albumRatingKey"');
+    
+    if (maps.isEmpty) {
+      // Check if there are ANY tracks with a similar album name
+      final albumCheckMaps = await rawQuery('''
+        SELECT DISTINCT parent_rating_key, album_name, COUNT(*) as track_count
+        FROM tracks
+        GROUP BY parent_rating_key
+        LIMIT 10
+      ''');
+      debugPrint('TRACK_REPOSITORY: Sample parent_rating_keys in database:');
+      for (final row in albumCheckMaps) {
+        debugPrint('  - parent_rating_key="${row['parent_rating_key']}", name="${row['album_name']}", tracks=${row['track_count']}');
+      }
+    }
+    
     return maps.map(Track.fromDb).toList();
   }
 
@@ -229,6 +249,8 @@ class TrackRepository extends BaseRepository {
             !uniqueAlbums.containsKey(track.albumRatingKey)) {
           
           final artistId = track.artistRatingKey != null ? artistIds[track.artistRatingKey] : null;
+
+          debugPrint('ALBUM_SYNC_DEBUG: Creating album "${track.albumName}" from track - year=${track.year}');
 
           uniqueAlbums[track.albumRatingKey!] = Album(
             ratingKey: track.albumRatingKey!,

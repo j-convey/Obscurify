@@ -109,9 +109,15 @@ class _HomePageState extends State<HomePage> {
       );
 
       debugPrint('HOME_PAGE: got ${newReleases.length} new releases');
-      for (final item in newReleases.take(3)) {
-        debugPrint('HOME_PAGE: item "${item.title}" imageUrl=${item.imageUrl}');
+      debugPrint('HOME_PAGE: ===== NEW RELEASES ORDER RECEIVED =====');
+      for (int i = 0; i < newReleases.length && i < 10; i++) {
+        final item = newReleases[i];
+        final originallyAvailable = item.data?['originallyAvailableAt'];
+        final year = item.data?['year'];
+        debugPrint('HOME_PAGE: [$i] "${item.title}" - ${item.subtitle}');
+        debugPrint('         originallyAvailableAt=$originallyAvailable, year=$year');
       }
+      debugPrint('HOME_PAGE: =========================================');
 
       if (mounted) {
         setState(() {

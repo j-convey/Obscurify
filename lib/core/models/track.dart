@@ -212,6 +212,13 @@ class Track {
     final userRating = json['userRating']?.toDouble();
     final title = json['title'] ?? 'Unknown';
     
+    // DEBUG: Check if Plex sends originallyAvailableAt for tracks
+    final originallyAvailable = json['originallyAvailableAt'];
+    final parentOriginallyAvailable = json['parentOriginallyAvailableAt'];
+    if (originallyAvailable != null || parentOriginallyAvailable != null) {
+      debugPrint('TRACK_SYNC_DEBUG: Track "$title" has originallyAvailableAt=$originallyAvailable, parentOriginallyAvailableAt=$parentOriginallyAvailable');
+    }
+    
     if (userRating != null) {
       debugPrint('SYNC_DEBUG [fromPlexJson]: Track "$title" has userRating: $userRating');
     }

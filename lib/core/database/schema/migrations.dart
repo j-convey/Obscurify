@@ -6,7 +6,7 @@ import 'triggers.dart';
 /// Database migration logic
 class MigrationSchema {
   /// Current database version
-  static const int currentVersion = 11;
+  static const int currentVersion = 12;
 
   /// Run migrations from oldVersion to newVersion
   static Future<void> migrate(dynamic db, int oldVersion, int newVersion) async {
@@ -50,6 +50,10 @@ class MigrationSchema {
 
     if (oldVersion < 11) {
       await _migrateToV11(db);
+    }
+
+    if (oldVersion < 12) {
+      await _migrateToV12(db);
     }
 
     debugPrint('DATABASE: Migration complete to version $newVersion');
@@ -283,6 +287,17 @@ class MigrationSchema {
 
     debugPrint('DATABASE: Migrated to version 11 - Added FTS5, cached counts, '
         'media_items, triggers, covering index, WAL/FK pragmas');
+  }
+
+  static Future<void> _migrateToV12(dynamic db) async {
+    // Add originally_available_at field for precise release date sorting
+    await _safeAddColumn(db, 'albums', 'originally_available_at TEXT');
+    
+    // Recreate views to include the new field
+    await ViewSchema.dropAll(db);
+    await ViewSchema.createAll(db);
+    
+    debugPrint('DATABASE: Migrated to version 12 - Added originally_available_at for albums');
   }
 
   /// Safely add a column (ignores error if column exists)

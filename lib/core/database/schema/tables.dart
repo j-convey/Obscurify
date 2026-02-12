@@ -28,6 +28,7 @@ class TableSchema {
       thumb TEXT,
       art TEXT,
       year INTEGER,
+      originally_available_at TEXT,
       genre TEXT,
       studio TEXT,
       summary TEXT,

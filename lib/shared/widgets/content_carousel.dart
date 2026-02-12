@@ -86,6 +86,15 @@ class ContentCarousel extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    // Debug: Log carousel items order
+    if (title == 'New Releases') {
+      debugPrint('CAROUSEL: Building "$title" with ${items.length} items');
+      for (int i = 0; i < items.length && i < 5; i++) {
+        final item = items[i];
+        debugPrint('CAROUSEL: [$i] "${item.title}" - ${item.subtitle}');
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,

@@ -72,6 +72,10 @@ class HomeDataService {
     try {
       final albums = await _db.albums.getByReleaseYear(limit: limit);
       debugPrint('HOME_DATA_SERVICE: getNewReleases found ${albums.length} albums');
+      debugPrint('HOME_DATA_SERVICE: First 5 albums in order:');
+      for (int i = 0; i < albums.length && i < 5; i++) {
+        debugPrint('  [$i] "${albums[i].title}" by ${albums[i].artistName} - Released: ${albums[i].originallyAvailableAt ?? "unknown"} (Year: ${albums[i].year})');
+      }
 
       // For each album, find a track that belongs to it and use that
       // track's thumb.  This is the exact pattern the collection page
@@ -124,11 +128,20 @@ class HomeDataService {
             'artistRatingKey': album.artistRatingKey,
             'thumb': album.thumb,
             'year': album.year,
+            'originallyAvailableAt': album.originallyAvailableAt,
             'serverId': album.serverId,
           },
         );
       }).toList();
 
+      // Debug: Check if album rating keys match what tracks have
+      debugPrint('HOME_DATA_SERVICE: Verifying album-track relationships:');
+      for (int i = 0; i < albums.length && i < 3; i++) {
+        final album = albums[i];
+        final trackCount = await _db.tracks.getByAlbum(album.ratingKey);
+        debugPrint('  Album "${album.title}" (${album.ratingKey}): ${trackCount.length} tracks');
+      }
+      
       debugPrint('HOME_DATA_SERVICE: returning ${items.length} carousel items, '
           '${items.where((i) => i.imageUrl != null && i.imageUrl!.isNotEmpty).length} have images');
 

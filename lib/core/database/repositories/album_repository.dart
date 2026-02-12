@@ -72,11 +72,19 @@ class AlbumRepository extends BaseRepository {
     final maps = await rawQuery('''
       SELECT * FROM v_albums_full 
       ORDER BY 
-        CASE WHEN year IS NOT NULL AND year > 0 THEN 0 ELSE 1 END,
-        year DESC, 
+        CASE WHEN originally_available_at IS NOT NULL AND originally_available_at != '' THEN 0 ELSE 1 END,
+        originally_available_at DESC,
+        year DESC,
         title COLLATE NOCASE ASC
       LIMIT ?
     ''', [limit]);
+    
+    debugPrint('ALBUM_REPOSITORY: getByReleaseYear returning ${maps.length} albums');
+    for (int i = 0; i < maps.length && i < 10; i++) {
+      final map = maps[i];
+      debugPrint('  [$i] "${map['title']}" originally_available_at=${map['originally_available_at']}, year=${map['year']}, added_at=${map['added_at']}');
+    }
+    
     return maps.map(Album.fromDb).toList();
   }
 
@@ -186,6 +194,82 @@ class AlbumRepository extends BaseRepository {
     );
     
     return result.isNotEmpty ? result.first['id'] as int : id;
+  }
+
+  /// Save multiple albums (batch upsert)
+  Future<void> saveAll(
+    String serverId,
+    List<Album> albums, {
+    void Function(int current, int total)? onProgress,
+  }) async {
+    if (albums.isEmpty) return;
+
+    final db = await getDatabase();
+    
+    // Use transaction for performance
+    await db.transaction((txn) async {
+      const batchSize = 100;
+      for (int batchStart = 0; batchStart < albums.length; batchStart += batchSize) {
+        final batchEnd = (batchStart + batchSize).clamp(0, albums.length);
+        final batch = albums.sublist(batchStart, batchEnd);
+        
+        final albumBatch = txn.batch();
+        
+        for (final album in batch) {
+          // Get artist_id if we have the artist_rating_key
+          int? artistId;
+          if (album.artistRatingKey != null) {
+            final artistResult = await txn.query(
+              'artists',
+              columns: ['id'],
+              where: 'rating_key = ?',
+              whereArgs: [album.artistRatingKey],
+              limit: 1,
+            );
+            if (artistResult.isNotEmpty) {
+              artistId = artistResult.first['id'] as int;
+            }
+          }
+          
+          final albumWithArtistId = album.copyWith(artistId: artistId);
+          
+          if (batchStart < 3) {
+            debugPrint('ALBUM_REPOSITORY: Saving album \"${albumWithArtistId.title}\" with ratingKey=\"${albumWithArtistId.ratingKey}\", originallyAvailableAt=${albumWithArtistId.originallyAvailableAt}');
+          }
+          
+          // Use INSERT OR REPLACE to update existing albums
+          albumBatch.rawInsert('''
+            INSERT OR REPLACE INTO albums (
+              rating_key, title, artist_id, artist_name, thumb, art, 
+              year, originally_available_at, genre, studio, summary, 
+              track_count, server_id, added_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ''', [
+            albumWithArtistId.ratingKey,
+            albumWithArtistId.title,
+            albumWithArtistId.artistId,
+            albumWithArtistId.artistName,
+            albumWithArtistId.thumb ?? '',
+            albumWithArtistId.art ?? '',
+            albumWithArtistId.year ?? 0,
+            albumWithArtistId.originallyAvailableAt,
+            albumWithArtistId.genre ?? '',
+            albumWithArtistId.studio ?? '',
+            albumWithArtistId.summary ?? '',
+            albumWithArtistId.trackCount,
+            albumWithArtistId.serverId,
+            albumWithArtistId.addedAt ?? DateTime.now().millisecondsSinceEpoch,
+            DateTime.now().millisecondsSinceEpoch,
+          ]);
+        }
+        
+        await albumBatch.commit(noResult: true);
+        
+        onProgress?.call(batchEnd, albums.length);
+      }
+    });
+
+    debugPrint('ALBUM_REPOSITORY: Saved ${albums.length} albums for server $serverId');
   }
 
   /// Update album track count

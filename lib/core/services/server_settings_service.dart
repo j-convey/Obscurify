@@ -3,6 +3,7 @@ import 'package:obscurify/core/services/plex/plex_services.dart';
 import 'package:obscurify/core/services/storage_service.dart';
 import 'package:obscurify/core/database/database_service.dart';
 import 'package:obscurify/core/models/track.dart';
+import 'package:obscurify/core/models/album.dart';
 import 'package:obscurify/core/models/playlist.dart';
 import 'package:obscurify/core/services/playlist_service.dart';
 import 'package:obscurify/core/services/library_change_notifier.dart';
@@ -260,6 +261,49 @@ class ServerSettingsService {
 
         debugPrint(
             'Completed ${tracks.length} tracks from library $libraryKey');
+      }
+
+      // --- Sync albums (fetch full album metadata) ---
+      for (var libraryKey in libraryKeys) {
+        final libraryInfo = serverLibraries[server.machineIdentifier]
+            ?.firstWhere(
+              (lib) => lib['key'] == libraryKey,
+              orElse: () => {'title': 'Library $libraryKey'},
+            );
+        final libraryTitle =
+            libraryInfo?['title'] as String? ?? 'Library $libraryKey';
+
+        onStatusChange('$libraryTitle (fetching albums...)');
+        debugPrint(
+            'Fetching albums from library $libraryKey on ${server.machineIdentifier}...');
+
+        final albums =
+            await _libraryService.getAlbums(token, serverUrl, libraryKey);
+
+        if (albums.isNotEmpty) {
+          onStatusChange('$libraryTitle (saving ${albums.length} albums...)');
+          debugPrint('Saving ${albums.length} albums from library $libraryKey...');
+
+          final albumObjects = albums
+              .map((json) => Album.fromPlexJson(
+                    json,
+                    server.machineIdentifier,
+                  ))
+              .toList();
+
+          await _dbService.albums.saveAll(
+            server.machineIdentifier,
+            albumObjects,
+            onProgress: (current, total) {
+              onStatusChange('$libraryTitle (saving album $current/$total)');
+            },
+          );
+
+          debugPrint(
+              'Completed ${albums.length} albums from library $libraryKey');
+        } else {
+          debugPrint('No albums found in library $libraryKey');
+        }
       }
 
       // --- Sync playlists ---
