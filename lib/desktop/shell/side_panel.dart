@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:obscurify/core/services/audio_player_service.dart';
 import 'side_panel_constants.dart';
 import 'side_panel_header.dart';
+import 'side_panel_playlist_list.dart';
 
 /// A resizable left-hand side panel (similar to Spotify's sidebar).
 ///
@@ -8,7 +10,20 @@ import 'side_panel_header.dart';
 /// defined in [SidePanelConstants]. A thin drag handle on the right edge
 /// allows the user to adjust the width.
 class SidePanel extends StatefulWidget {
-  const SidePanel({super.key});
+  final void Function(Widget)? onNavigate;
+  final AudioPlayerService? audioPlayerService;
+  final VoidCallback? onHomeTap;
+  final VoidCallback? onSettingsTap;
+  final VoidCallback? onProfileTap;
+
+  const SidePanel({
+    super.key,
+    this.onNavigate,
+    this.audioPlayerService,
+    this.onHomeTap,
+    this.onSettingsTap,
+    this.onProfileTap,
+  });
 
   @override
   State<SidePanel> createState() => _SidePanelState();
@@ -95,8 +110,17 @@ class _SidePanelState extends State<SidePanel> {
                     // TODO: Create playlist / folder / Jam
                   },
                 ),
-                // Future content goes here
-                const Expanded(child: SizedBox.shrink()),
+                // Playlist artwork list
+                Expanded(
+                  child: SidePanelPlaylistList(
+                    isCollapsed: collapsed,
+                    onNavigate: widget.onNavigate,
+                    audioPlayerService: widget.audioPlayerService,
+                    onHomeTap: widget.onHomeTap,
+                    onSettingsTap: widget.onSettingsTap,
+                    onProfileTap: widget.onProfileTap,
+                  ),
+                ),
               ],
             ),
           ),

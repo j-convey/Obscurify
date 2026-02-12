@@ -168,7 +168,13 @@ class _MainScreenState extends State<MainScreen> {
                 padding: const EdgeInsets.only(left: 4, right: 4, bottom: 4),
                 child: Row(
                   children: [
-                    const SidePanel(),
+                    SidePanel(
+                    onNavigate: _navigateToPage,
+                    audioPlayerService: _audioPlayerService,
+                    onHomeTap: _onHomeTap,
+                    onSettingsTap: _onSettingsTap,
+                    onProfileTap: _onProfileTap,
+                  ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: ClipRRect(
