@@ -579,11 +579,20 @@ class _ArtistPageState extends State<ArtistPage> {
       currentServerUrl: widget.serverUrl,
       onLoadTracks: () async {
         // Fetch album tracks from Plex API
-        return await _artistService.getAlbumTracks(
+        final tracks = await _artistService.getAlbumTracks(
           albumId: albumId,
           serverUrl: widget.serverUrl,
           token: widget.token,
         );
+        
+        // Normalize track data to include 'artist' field for player bar
+        return tracks.map((track) {
+          // Add 'artist' field if missing (Plex uses 'grandparentTitle')
+          if (track['artist'] == null && track['grandparentTitle'] != null) {
+            track['artist'] = track['grandparentTitle'];
+          }
+          return track;
+        }).toList();
       },
       onNavigate: widget.onNavigate,
     );

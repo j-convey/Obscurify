@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
+import 'package:obscurify/desktop/features/artist/artist_page.dart';
 import 'widgets/album_header.dart';
 import 'widgets/album_track_list_item.dart';
 import 'widgets/album_action_buttons.dart';
@@ -34,6 +35,9 @@ class AlbumDisplay extends StatefulWidget {
   /// Current server URL
   final String? currentServerUrl;
 
+  /// Navigation callback
+  final void Function(Widget)? onNavigate;
+
   const AlbumDisplay({
     super.key,
     required this.title,
@@ -45,6 +49,7 @@ class AlbumDisplay extends StatefulWidget {
     this.currentToken,
     this.serverUrls,
     this.currentServerUrl,
+    this.onNavigate,
   });
 
   @override
@@ -120,6 +125,20 @@ class _AlbumDisplayState extends State<AlbumDisplay> {
       );
     }
 
+    // Extract artist info and year from first track
+    final firstTrack = _tracks.isNotEmpty ? _tracks.first : null;
+    final artistName = firstTrack?['artist'] as String? ??
+        firstTrack?['grandparentTitle'] as String?;
+    final artistRatingKey = firstTrack?['grandparentRatingKey'] as String? ??
+        firstTrack?['artistRatingKey'] as String?;
+    final artistThumb = firstTrack?['grandparentThumb'] as String? ??
+        firstTrack?['artistThumb'] as String?;
+    final year = firstTrack?['year'] as int?;
+    final serverId = firstTrack?['serverId'] as String?;
+    final serverUrl = serverId != null
+        ? (widget.serverUrls?[serverId] ?? widget.currentServerUrl)
+        : widget.currentServerUrl;
+
     // Calculate opacity for the top play button
     double playButtonOpacity = 0.0;
     final range = _fadeEndOffset - _fadeStartOffset;
@@ -144,6 +163,28 @@ class _AlbumDisplayState extends State<AlbumDisplay> {
                 trackCount: _tracks.length,
                 imageUrl: widget.imageUrl,
                 gradientColors: widget.gradientColors,
+                artistName: artistName,
+                artistRatingKey: artistRatingKey,
+                artistThumb: artistThumb,
+                year: year,
+                serverUrl: serverUrl,
+                token: widget.currentToken,
+                onArtistTap: artistRatingKey != null && widget.onNavigate != null
+                    ? () {
+                        if (serverUrl != null && widget.currentToken != null) {
+                          widget.onNavigate!(
+                            ArtistPage(
+                              artistId: artistRatingKey,
+                              artistName: artistName ?? 'Unknown Artist',
+                              serverUrl: serverUrl,
+                              token: widget.currentToken!,
+                              audioPlayerService: widget.audioPlayerService,
+                              onNavigate: widget.onNavigate,
+                            ),
+                          );
+                        }
+                      }
+                    : null,
               ),
             ),
             // Action buttons

@@ -148,6 +148,7 @@ class AlbumPage extends StatelessWidget {
             currentToken: currentToken,
             serverUrls: serverUrls,
             currentServerUrl: currentServerUrl,
+            onNavigate: onNavigate,
           );
         },
       ),

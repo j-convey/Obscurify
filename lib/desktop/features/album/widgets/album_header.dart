@@ -9,6 +9,13 @@ class AlbumHeader extends StatelessWidget {
   final Widget? coverImage;
   final String? imageUrl;
   final List<Color>? gradientColors;
+  final String? artistName;
+  final String? artistRatingKey;
+  final String? artistThumb;
+  final int? year;
+  final String? serverUrl;
+  final String? token;
+  final VoidCallback? onArtistTap;
 
   const AlbumHeader({
     super.key,
@@ -18,6 +25,13 @@ class AlbumHeader extends StatelessWidget {
     this.coverImage,
     this.imageUrl,
     this.gradientColors,
+    this.artistName,
+    this.artistRatingKey,
+    this.artistThumb,
+    this.year,
+    this.serverUrl,
+    this.token,
+    this.onArtistTap,
   });
 
   List<Color> get _defaultGradientColors {
@@ -113,32 +127,72 @@ class AlbumHeader extends StatelessWidget {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    const CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Colors.white24,
-                      child: Icon(Icons.album, size: 12, color: Colors.white),
+                    // Artist avatar (clickable)
+                    MouseRegion(
+                      cursor: onArtistTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                      child: GestureDetector(
+                        onTap: onArtistTap,
+                        child: CircleAvatar(
+                          radius: 24,
+                          backgroundColor: Colors.white24,
+                          backgroundImage: artistThumb != null && serverUrl != null && token != null
+                              ? NetworkImage('$serverUrl$artistThumb?X-Plex-Token=$token')
+                              : null,
+                          child: artistThumb == null ? const Icon(Icons.person, size: 28, color: Colors.white) : null,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        displaySubtitle,
+                    // Artist name (clickable)
+                    if (artistName != null)
+                      MouseRegion(
+                        cursor: onArtistTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                        child: GestureDetector(
+                          onTap: onArtistTap,
+                          child: Text(
+                            artistName!,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (artistName != null && year != null)
+                      Text(
+                        ' • ',
                         style: TextStyle(
                           color: Colors.grey[300],
                           fontSize: 14,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                    // Year
+                    if (year != null)
+                      Text(
+                        '$year',
+                        style: TextStyle(
+                          color: Colors.grey[300],
+                          fontSize: 14,
+                        ),
+                      ),
+                    if ((artistName != null || year != null))
+                      Text(
+                        ' • ',
+                        style: TextStyle(
+                          color: Colors.grey[300],
+                          fontSize: 14,
+                        ),
+                      ),
+                    // Song count
+                    Text(
+                      '$trackCount songs',
+                      style: TextStyle(
+                        color: Colors.grey[300],
+                        fontSize: 14,
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '$trackCount songs',
-                  style: TextStyle(
-                    color: Colors.grey[300],
-                    fontSize: 14,
-                  ),
                 ),
               ],
             ),
