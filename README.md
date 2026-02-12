@@ -9,7 +9,7 @@ A modern, cross-platform music player built with Flutter that seamlessly integra
 ![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=white)
 
-<img width="2879" height="1713" alt="image" src="https://github.com/user-attachments/assets/f2919bef-f2af-4470-a0e1-16dde1c5e101" />
+<img width="1445" height="795" alt="image" src="https://github.com/user-attachments/assets/1614a9fd-61b5-4de5-bfde-6b76874b74df" />
 
 
 ## 🌟 Features
