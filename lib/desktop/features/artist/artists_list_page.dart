@@ -29,6 +29,7 @@ class ArtistsListPage extends StatefulWidget {
 class _ArtistsListPageState extends State<ArtistsListPage> {
   final DatabaseService _dbService = DatabaseService();
   final StorageService _storageService = StorageService();
+  final ScrollController _scrollController = ScrollController();
 
   List<Artist> _artists = [];
   bool _isLoading = true;
@@ -40,6 +41,12 @@ class _ArtistsListPageState extends State<ArtistsListPage> {
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -83,6 +90,7 @@ class _ArtistsListPageState extends State<ArtistsListPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           // Header
           SliverToBoxAdapter(

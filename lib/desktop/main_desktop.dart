@@ -4,6 +4,7 @@ import 'package:media_kit/media_kit.dart';
 import 'shell/main_screen.dart';
 import '../core/services/audio_player_service.dart';
 import '../core/services/storage_service.dart';
+import '../shared/widgets/styled_scrollbar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +47,7 @@ class ObscurifyDesktopApp extends StatelessWidget {
     return MaterialApp(
       title: 'Obscurify',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: StyledScrollBehavior(),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,

@@ -29,6 +29,7 @@ class PlaylistsPage extends StatefulWidget {
 class _PlaylistsPageState extends State<PlaylistsPage> {
   final PlaylistService _playlistService = PlaylistService();
   final StorageService _storageService = StorageService();
+  final ScrollController _scrollController = ScrollController();
   List<Playlist> _playlists = [];
   bool _isLoading = true;
   String? _token;
@@ -38,6 +39,12 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
   void initState() {
     super.initState();
     _loadPlaylists();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadPlaylists() async {
@@ -139,26 +146,25 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
       );
     }
 
-    return Padding(
+    return GridView.builder(
+      controller: _scrollController,
       padding: const EdgeInsets.all(16.0),
-      child: GridView.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 5,
-          childAspectRatio: 1.0,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-        ),
-        itemCount: _playlists.length,
-        itemBuilder: (context, index) {
-          final playlist = _playlists[index];
-          return _PlaylistCard(
-            playlist: playlist,
-            serverUrl: _serverUrl ?? '',
-            token: _token ?? '',
-            onTap: () => _navigateToPlaylist(playlist),
-          );
-        },
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 5,
+        childAspectRatio: 1.0,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
       ),
+      itemCount: _playlists.length,
+      itemBuilder: (context, index) {
+        final playlist = _playlists[index];
+        return _PlaylistCard(
+          playlist: playlist,
+          serverUrl: _serverUrl ?? '',
+          token: _token ?? '',
+          onTap: () => _navigateToPlaylist(playlist),
+        );
+      },
     );
   }
 
