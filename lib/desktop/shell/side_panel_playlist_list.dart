@@ -3,6 +3,7 @@ import 'package:obscurify/core/models/playlist.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/services/playlist_service.dart';
 import 'package:obscurify/core/services/storage_service.dart';
+import 'package:obscurify/core/services/library_change_notifier.dart';
 import 'package:obscurify/desktop/features/playlists/playlist_detail_page.dart';
 
 /// Scrollable list of playlist thumbnails displayed inside the side panel.
@@ -48,6 +49,19 @@ class _SidePanelPlaylistListState extends State<SidePanelPlaylistList> {
   void initState() {
     super.initState();
     _loadPlaylists();
+    LibraryChangeNotifier().addListener(_onLibraryChanged);
+  }
+
+  @override
+  void dispose() {
+    LibraryChangeNotifier().removeListener(_onLibraryChanged);
+    super.dispose();
+  }
+
+  void _onLibraryChanged() {
+    if (mounted) {
+      _loadPlaylists();
+    }
   }
 
   Future<void> _loadPlaylists() async {

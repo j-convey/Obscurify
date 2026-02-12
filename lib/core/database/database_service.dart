@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'schema/tables.dart';
 import 'schema/views.dart';
@@ -90,8 +91,18 @@ class DatabaseService {
       databaseFactory = databaseFactoryFfi;
     }
 
-    final databasesPath = await getDatabasesPath();
-    final path = join(databasesPath, 'obscurify_music.db');
+    // Use application documents directory for user-writable storage
+    // This ensures the database can be created even when app is installed in Program Files
+    final directory = await getApplicationDocumentsDirectory();
+    final path = join(directory.path, 'Obscurify', 'obscurify_music.db');
+    
+    // Ensure the Obscurify folder exists
+    final dbDir = Directory(join(directory.path, 'Obscurify'));
+    if (!await dbDir.exists()) {
+      await dbDir.create(recursive: true);
+    }
+    
+    debugPrint('DATABASE: Database path: $path');
 
     return await openDatabase(
       path,

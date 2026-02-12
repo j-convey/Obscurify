@@ -21,6 +21,17 @@ class PlaylistService {
     }
   }
 
+  /// Fetches playlists from Plex API without saving to database.
+  /// Use this when you want to filter playlists before saving.
+  Future<List<Playlist>> fetchPlaylists(String serverUrl, String token) async {
+    try {
+      return await _fetchPlaylistsFromApi(serverUrl, token);
+    } catch (e) {
+      debugPrint('PLAYLIST SERVICE: Error fetching playlists: $e');
+      return [];
+    }
+  }
+
   /// Fetches tracks for a specific playlist from the Plex API.
   Future<List<Map<String, dynamic>>> getPlaylistTracks(
     String serverUrl,

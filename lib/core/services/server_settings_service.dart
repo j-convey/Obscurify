@@ -3,6 +3,7 @@ import 'package:obscurify/core/services/plex/plex_services.dart';
 import 'package:obscurify/core/services/storage_service.dart';
 import 'package:obscurify/core/database/database_service.dart';
 import 'package:obscurify/core/models/track.dart';
+import 'package:obscurify/core/models/playlist.dart';
 import 'package:obscurify/core/services/playlist_service.dart';
 import 'package:obscurify/core/services/library_change_notifier.dart';
 
@@ -264,16 +265,18 @@ class ServerSettingsService {
       // --- Sync playlists ---
       onStatusChange('Syncing Playlists...');
       try {
-        final playlists = await _playlistService.syncPlaylists(
+        // Fetch playlists without saving them first
+        final playlists = await _playlistService.fetchPlaylists(
           serverUrl,
           token,
-          server.machineIdentifier,
         );
 
         debugPrint(
             'Found ${playlists.length} playlists from server. Filtering by synced libraries...');
 
         int savedCount = 0;
+        final playlistsToSave = <Playlist>[];
+        
         for (final playlist in playlists) {
           onStatusChange('Checking Playlist: ${playlist.title}');
 
@@ -304,6 +307,7 @@ class ServerSettingsService {
 
             if (hasTracksInSyncedLibs) {
               await _dbService.playlists.saveTracks(playlist.id, playlistTracks);
+              playlistsToSave.add(playlist.copyWith(serverId: server.machineIdentifier));
               savedCount++;
               debugPrint(
                   'Saved playlist "${playlist.title}" (${playlistTracks.length} tracks)');
@@ -317,6 +321,11 @@ class ServerSettingsService {
             debugPrint(
                 'Error syncing items for playlist ${playlist.title}: $e');
           }
+        }
+        
+        // Now save only the playlists that have tracks from synced libraries
+        if (playlistsToSave.isNotEmpty) {
+          await _dbService.playlists.saveAll(playlistsToSave);
         }
         
         debugPrint('Saved $savedCount/${playlists.length} playlists with tracks from synced libraries');

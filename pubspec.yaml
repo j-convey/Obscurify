@@ -45,6 +45,7 @@ dependencies:
   sqflite: ^2.3.0  # For mobile (Android/iOS)
   sqflite_common_ffi: ^2.3.0  # For desktop (Windows/Linux/macOS)
   path: ^1.8.3
+  path_provider: ^2.1.1  # For getting user directories
   
   # URL launcher for browser authentication
   url_launcher: ^6.2.4
