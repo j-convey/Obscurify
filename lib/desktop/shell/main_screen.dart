@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'obscurify_app_bar.dart';
 import 'player_bar.dart';
+import 'side_panel.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/services/storage_service.dart';
 import 'package:obscurify/core/services/plex/plex_services.dart';
@@ -162,7 +163,14 @@ class _MainScreenState extends State<MainScreen> {
               onSettingsTap: _onSettingsTap,
               onProfileTap: _onProfileTap,
             ),
-            Expanded(child: _currentPage),
+            Expanded(
+              child: Row(
+                children: [
+                  const SidePanel(),
+                  Expanded(child: _currentPage),
+                ],
+              ),
+            ),
             PlayerBar(
               playerService: _audioPlayerService,
               onNavigate: _navigateToPage,
