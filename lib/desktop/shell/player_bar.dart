@@ -21,9 +21,11 @@ class PlayerBar extends StatefulWidget {
 
 class _PlayerBarState extends State<PlayerBar> {
   late double _currentVolume;
+  double _previousVolume = 0.7;
   final PlexServerService _serverService = PlexServerService();
   final DatabaseService _dbService = DatabaseService();
   bool _isLiked = false;
+  bool _isVolumeSliderHovered = false;
 
   @override
   void initState() {
@@ -421,41 +423,62 @@ class _PlayerBarState extends State<PlayerBar> {
                         },
                       ),
                       // Volume control
-                      Icon(
-                        _currentVolume == 0 
-                          ? Icons.volume_mute 
-                          : _currentVolume < 0.5 
-                            ? Icons.volume_down 
-                            : Icons.volume_up,
-                        size: 20,
+                      IconButton(
+                        icon: Icon(
+                          _currentVolume == 0 
+                            ? Icons.volume_mute 
+                            : _currentVolume < 0.5 
+                              ? Icons.volume_down 
+                              : Icons.volume_up,
+                          size: 20,
+                        ),
                         color: _currentVolume == 0 ? Colors.red : Colors.grey[400],
+                        onPressed: () {
+                          setState(() {
+                            if (_currentVolume > 0) {
+                              // Mute: save current volume and set to 0
+                              _previousVolume = _currentVolume;
+                              _currentVolume = 0.0;
+                            } else {
+                              // Unmute: restore previous volume
+                              _currentVolume = _previousVolume;
+                            }
+                          });
+                          widget.playerService.setVolume(_currentVolume);
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
                       const SizedBox(width: 8),
-                      SizedBox(
-                        width: 100,
-                        child: SliderTheme(
-                          data: SliderThemeData(
-                            trackHeight: 4,
-                            thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 6,
+                      MouseRegion(
+                        onEnter: (_) => setState(() => _isVolumeSliderHovered = true),
+                        onExit: (_) => setState(() => _isVolumeSliderHovered = false),
+                        child: SizedBox(
+                          width: 100,
+                          child: SliderTheme(
+                            data: SliderThemeData(
+                              trackHeight: 4,
+                              thumbShape: RoundSliderThumbShape(
+                                enabledThumbRadius: _isVolumeSliderHovered ? 6 : 0,
+                              ),
+                              overlayShape: const RoundSliderOverlayShape(
+                                overlayRadius: 12,
+                              ),
+                              thumbColor: Colors.white,
+                              activeTrackColor: _isVolumeSliderHovered ? Colors.green : Colors.white,
+                              inactiveTrackColor: Colors.grey[700],
                             ),
-                            overlayShape: const RoundSliderOverlayShape(
-                              overlayRadius: 12,
+                            child: Slider(
+                              value: _currentVolume,
+                              min: 0.0,
+                              max: 1.0,
+                              onChanged: (value) {
+                                setState(() {
+                                  _currentVolume = value;
+                                });
+                                widget.playerService.setVolume(value);
+                              },
                             ),
-                            thumbColor: Colors.white,
-                            activeTrackColor: Colors.white,
-                            inactiveTrackColor: Colors.grey[700],
-                          ),
-                          child: Slider(
-                            value: _currentVolume,
-                            min: 0.0,
-                            max: 1.0,
-                            onChanged: (value) {
-                              setState(() {
-                                _currentVolume = value;
-                              });
-                              widget.playerService.setVolume(value);
-                            },
                           ),
                         ),
                       ),

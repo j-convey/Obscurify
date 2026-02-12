@@ -92,6 +92,150 @@ class BrowsePage extends StatelessWidget {
                       // TODO: Navigate to New Releases
                     },
                   ),
+                  _buildBrowseTile(
+                    'Pop',
+                    const Color(0xFFE91E63),
+                    Icons.star,
+                    () {
+                      // TODO: Navigate to Pop
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Rock',
+                    const Color(0xFF8B4513),
+                    Icons.music_note,
+                    () {
+                      // TODO: Navigate to Rock
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Country',
+                    const Color(0xFFA0826D),
+                    Icons.landscape,
+                    () {
+                      // TODO: Navigate to Country
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Hip-Hop',
+                    const Color(0xFF6A1B9A),
+                    Icons.mic,
+                    () {
+                      // TODO: Navigate to Hip-Hop
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Indie',
+                    const Color(0xFF00897B),
+                    Icons.headphones,
+                    () {
+                      // TODO: Navigate to Indie
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Love',
+                    const Color(0xFFC2185B),
+                    Icons.favorite,
+                    () {
+                      // TODO: Navigate to Love
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Party',
+                    const Color(0xFFF57C00),
+                    Icons.celebration,
+                    () {
+                      // TODO: Navigate to Party
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Workout',
+                    const Color(0xFFD84315),
+                    Icons.fitness_center,
+                    () {
+                      // TODO: Navigate to Workout
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Dance/Electronic',
+                    const Color(0xFF7B1FA2),
+                    Icons.graphic_eq,
+                    () {
+                      // TODO: Navigate to Dance/Electronic
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Jazz',
+                    const Color(0xFF283593),
+                    Icons.piano,
+                    () {
+                      // TODO: Navigate to Jazz
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Metal',
+                    const Color(0xFF424242),
+                    Icons.bolt,
+                    () {
+                      // TODO: Navigate to Metal
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Disney',
+                    const Color(0xFF1565C0),
+                    Icons.castle,
+                    () {
+                      // TODO: Navigate to Disney
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Christian & Gospel',
+                    const Color(0xFFD4AF37),
+                    Icons.church,
+                    () {
+                      // TODO: Navigate to Christian & Gospel
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Classical',
+                    const Color(0xFF6D214F),
+                    Icons.music_note,
+                    () {
+                      // TODO: Navigate to Classical
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'TV & Movies',
+                    const Color(0xFFD32F2F),
+                    Icons.tv,
+                    () {
+                      // TODO: Navigate to TV & Movies
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'K-pop',
+                    const Color(0xFFAD1457),
+                    Icons.stars,
+                    () {
+                      // TODO: Navigate to K-pop
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Gaming',
+                    const Color(0xFF388E3C),
+                    Icons.videogame_asset,
+                    () {
+                      // TODO: Navigate to Gaming
+                    },
+                  ),
+                  _buildBrowseTile(
+                    'Nature & Noise',
+                    const Color(0xFF558B2F),
+                    Icons.nature,
+                    () {
+                      // TODO: Navigate to Nature & Noise
+                    },
+                  ),
                 ],
               ),
             ],
