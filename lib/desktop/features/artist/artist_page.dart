@@ -285,7 +285,7 @@ class _ArtistPageState extends State<ArtistPage> {
 
                   // Stats
                   Text(
-                    '${_tracks.length} songs • ${_artist?.albumCount ?? 0} albums',
+                    '${_tracks.length} songs • ${_albums.length} albums',
                     style: TextStyle(
                       color: Colors.grey[400],
                       fontSize: 14,
