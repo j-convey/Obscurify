@@ -34,6 +34,7 @@ class _MainScreenState extends State<MainScreen> {
   int _currentHistoryIndex = -1;
   String? _currentToken;
   String? _currentServerUrl;
+  Key _sidePanelKey = UniqueKey();
 
   @override
   void initState() {
@@ -82,6 +83,7 @@ class _MainScreenState extends State<MainScreen> {
     _currentServerUrl = await _storageService.getServerUrl();
     if (mounted) {
       setState(() {
+        _sidePanelKey = UniqueKey(); // Force SidePanel to rebuild
         _currentPage = HomePage(
           onNavigate: _navigateToPage,
           audioPlayerService: _audioPlayerService,
@@ -169,6 +171,7 @@ class _MainScreenState extends State<MainScreen> {
                 child: Row(
                   children: [
                     SidePanel(
+                    key: _sidePanelKey,
                     onNavigate: _navigateToPage,
                     audioPlayerService: _audioPlayerService,
                     onHomeTap: _onHomeTap,

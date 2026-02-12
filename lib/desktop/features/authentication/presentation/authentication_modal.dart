@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:obscurify/core/services/plex/plex_services.dart';
 import 'package:obscurify/core/services/authentication_check_service.dart';
+import 'package:obscurify/desktop/features/settings/server/server_settings_logic.dart';
 import 'login_welcome_dialog.dart';
+import 'library_setup_page.dart';
 
 /// Modal coordinator for first-time authentication.
 /// Single Responsibility: Only orchestrates showing login dialog and handling auth flow.
@@ -24,6 +26,8 @@ class AuthenticationModal extends StatefulWidget {
 }
 
 class _AuthenticationModalState extends State<AuthenticationModal> {
+  final _logic = ServerSettingsLogic();
+
   @override
   void initState() {
     super.initState();
@@ -65,8 +69,12 @@ class _AuthenticationModalState extends State<AuthenticationModal> {
     try {
       final result = await widget.authService.signIn();
       if (result['success'] == true && mounted) {
+        // Save credentials before showing library setup
+        await _logic.saveCredentials(result['token'], result['username']);
+        
+        if (!mounted) return;
         Navigator.pop(context); // Close loading dialog
-        widget.onAuthenticationSuccess();
+        _showLibrarySetupPage();
       } else if (mounted) {
         Navigator.pop(context); // Close loading dialog
         _showErrorDialog('Failed to sign in: ${result['error']}');
@@ -77,6 +85,20 @@ class _AuthenticationModalState extends State<AuthenticationModal> {
         _showErrorDialog('Error during authentication: $e');
       }
     }
+  }
+
+  /// Show library setup page after successful authentication.
+  void _showLibrarySetupPage() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => LibrarySetupPage(
+          onSetupComplete: () {
+            Navigator.pop(context); // Close setup page
+            widget.onAuthenticationSuccess();
+          },
+        ),
+      ),
+    );
   }
 
   /// Handle dismiss button press (Maybe Later).
