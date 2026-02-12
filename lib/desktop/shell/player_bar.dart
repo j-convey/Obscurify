@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/services/plex/plex_services.dart';
 import 'package:obscurify/core/database/database_service.dart';
+import 'package:obscurify/core/models/playlist.dart';
 import 'package:obscurify/desktop/features/artist/artist_page.dart';
 import 'package:obscurify/core/utils/audio_quality_utils.dart';
+import 'package:obscurify/shared/widgets/add_to_playlist_dialog.dart';
 
 class PlayerBar extends StatefulWidget {
   final AudioPlayerService playerService;
@@ -24,7 +26,6 @@ class _PlayerBarState extends State<PlayerBar> {
   double _previousVolume = 0.7;
   final PlexServerService _serverService = PlexServerService();
   final DatabaseService _dbService = DatabaseService();
-  bool _isLiked = false;
   bool _isVolumeSliderHovered = false;
 
   @override
@@ -38,6 +39,67 @@ class _PlayerBarState extends State<PlayerBar> {
     final minutes = duration.inMinutes;
     final seconds = twoDigits(duration.inSeconds.remainder(60));
     return '$minutes:$seconds';
+  }
+
+  /// Adds the current track to the "Liked Songs" playlist, creating it if needed.
+  Future<void> _addToLikedPlaylist(String trackId) async {
+    Playlist? liked = await _dbService.playlists.getByTitle('Liked Songs');
+    if (liked == null) {
+      final newId = 'local_liked_${DateTime.now().millisecondsSinceEpoch}';
+      liked = Playlist(
+        id: newId,
+        title: 'Liked Songs',
+        smart: false,
+        serverId: '',
+      );
+      await _dbService.playlists.save(liked);
+    }
+    await _dbService.playlists.addTrack(liked.id, trackId);
+    widget.playerService.refreshPlaylistStatus();
+  }
+
+  /// Builds the playlist add/check button.
+  /// - If the track is NOT in any playlist: shows a grey circle-plus icon.
+  ///   Tapping it adds to "Liked Songs" instantly.
+  /// - If the track IS in a playlist: shows a green circle-check icon.
+  ///   Tapping it opens the playlist picker dialog.
+  Widget _buildPlaylistButton(BuildContext context, Map<String, dynamic> track) {
+    final isInPlaylist = widget.playerService.isInPlaylist;
+    final ratingKey = track['ratingKey']?.toString() ??
+        track['rating_key']?.toString();
+
+    // Use Builder to capture the button's context for positioning the dialog
+    return Builder(
+      builder: (buttonContext) {
+        return IconButton(
+          icon: Icon(
+            isInPlaylist ? Icons.check_circle : Icons.add_circle_outline,
+            size: 22,
+          ),
+          color: isInPlaylist ? Colors.green : Colors.grey[400],
+          onPressed: ratingKey == null
+              ? null
+              : () async {
+                  if (isInPlaylist) {
+                    // Already in a playlist — open picker dialog
+                    final changed = await AddToPlaylistDialog.show(
+                      buttonContext,
+                      trackId: ratingKey,
+                      trackTitle: track['title'] as String? ?? 'Unknown',
+                      serverUrl: widget.playerService.currentServerUrl,
+                      token: widget.playerService.currentToken,
+                    );
+                    if (changed == true) {
+                      widget.playerService.refreshPlaylistStatus();
+                    }
+                  } else {
+                    // Not in any playlist — add to Liked Songs
+                    await _addToLikedPlaylist(ratingKey);
+                  }
+                },
+        );
+      },
+    );
   }
 
   @override
@@ -61,10 +123,6 @@ class _PlayerBarState extends State<PlayerBar> {
         debugPrint('PLAYER_BAR: bitrate: ${track['bitrate']} kbps');
         debugPrint('PLAYER_BAR: audioQuality: ${track['audioQuality']}');
         debugPrint('PLAYER_BAR: Media has Stream: ${track['Media'] is List && (track['Media'] as List).isNotEmpty ? (track['Media'][0]['Part']?[0]?['Stream'] != null) : false}');
-
-        // Check like status from track data
-        final userRating = track['user_rating'] as double?;
-        _isLiked = userRating != null && userRating >= 10.0;
 
         return Container(
           height: 90,
@@ -193,28 +251,8 @@ class _PlayerBarState extends State<PlayerBar> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Like button
-                      IconButton(
-                        icon: Icon(
-                          _isLiked ? Icons.favorite : Icons.favorite_border,
-                          size: 20,
-                        ),
-                        color: _isLiked ? Colors.green : Colors.grey[400],
-                        onPressed: () async {
-                          final ratingKey = track['ratingKey']?.toString() ??
-                              track['rating_key']?.toString();
-                          if (ratingKey == null) return;
-
-                          final newRating = _isLiked ? 0.0 : 10.0;
-                          await _dbService.tracks.updateRating(ratingKey, newRating);
-
-                          // Update the track map so the UI reflects the change
-                          track['user_rating'] = newRating;
-                          setState(() {
-                            _isLiked = !_isLiked;
-                          });
-                        },
-                      ),
+                      // Add to playlist button
+                      _buildPlaylistButton(context, track),
                     ],
                   ),
                 ),

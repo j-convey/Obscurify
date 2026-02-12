@@ -93,6 +93,18 @@ class PlaylistRepository extends BaseRepository {
     return maps.isNotEmpty;
   }
 
+  /// Get all playlists that contain a specific track
+  Future<List<Playlist>> getPlaylistsContainingTrack(String trackKey) async {
+    final maps = await rawQuery('''
+      SELECT p.* FROM playlists p
+      JOIN playlist_tracks pt ON p.id = pt.playlist_id
+      JOIN tracks t ON pt.track_id = t.id
+      WHERE t.rating_key = ?
+      ORDER BY p.title COLLATE NOCASE ASC
+    ''', [trackKey]);
+    return maps.map(Playlist.fromDb).toList();
+  }
+
   // ============================================================
   // EAGER LOADING
   // ============================================================
