@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import '../../../core/services/audio_player_service.dart';
 import '../../../core/services/plex/plex_services.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/services/home_data_service.dart';
 import '../../../core/database/database_service.dart';
 import '../../../core/models/track.dart';
 import '../../../core/services/library_change_notifier.dart';
+import '../../../shared/widgets/content_carousel.dart';
 import 'widgets/home_nav_bar.dart';
 
 /// Mobile home page with quick access buttons matching the desktop layout.
@@ -33,11 +35,14 @@ class _MobileHomePageState extends State<MobileHomePage> {
   final PlexServerService _serverService = PlexServerService();
   final StorageService _storageService = StorageService();
   final LibraryChangeNotifier _libraryNotifier = LibraryChangeNotifier();
+  final HomeDataService _homeDataService = HomeDataService();
   
   List<Track> _recentTracks = [];
+  List<CarouselItem> _newReleases = [];
   bool _isLoading = true;
   String? _currentToken;
   Map<String, String> _serverUrls = {};
+  String? _currentServerUrl;
 
   @override
   void initState() {
@@ -61,15 +66,32 @@ class _MobileHomePageState extends State<MobileHomePage> {
     // Load server info
     final token = await _storageService.getPlexToken();
     Map<String, String> urls = {};
+    String? serverUrl;
+    
     if (token != null) {
       urls = await _serverService.fetchServerUrlMap(token);
+      serverUrl = await _storageService.getSelectedServerUrl();
+      if (serverUrl == null || serverUrl.isEmpty) {
+        serverUrl = urls.values.isNotEmpty ? urls.values.first : null;
+      }
+    }
+    
+    // Load new releases
+    List<CarouselItem> newReleases = [];
+    if (token != null && serverUrl != null && serverUrl.isNotEmpty) {
+      newReleases = await _homeDataService.getNewReleases(
+        serverUrl: serverUrl,
+        token: token,
+      );
     }
     
     if (mounted) {
       setState(() {
         _recentTracks = tracks;
+        _newReleases = newReleases;
         _currentToken = token;
         _serverUrls = urls;
+        _currentServerUrl = serverUrl;
         _isLoading = false;
       });
       
@@ -106,6 +128,40 @@ class _MobileHomePageState extends State<MobileHomePage> {
       _currentToken!,
       serverUrl,
     );
+  }
+
+  void _onCarouselItemTap(CarouselItem item) {
+    if (_currentToken == null || _currentServerUrl == null) return;
+
+    switch (item.type) {
+      case CarouselItemType.artist:
+        // Navigate to artist page (if implemented in mobile)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Artist: ${item.title}')),
+        );
+        break;
+
+      case CarouselItemType.album:
+        // Navigate to album page (if implemented in mobile)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Album: ${item.title}')),
+        );
+        break;
+
+      case CarouselItemType.track:
+        // Play the track directly
+        if (widget.audioPlayerService != null && item.data != null) {
+          widget.audioPlayerService!.setServerUrls(
+            {item.data!['serverId'] as String? ?? '': _currentServerUrl!},
+          );
+          widget.audioPlayerService!.playTrack(
+            item.data!,
+            _currentToken!,
+            _currentServerUrl!,
+          );
+        }
+        break;
+    }
   }
 
   @override
@@ -175,6 +231,19 @@ class _MobileHomePageState extends State<MobileHomePage> {
                         ],
                       ),
                       const SizedBox(height: 32),
+                      
+                      // New releases carousel
+                      if (_newReleases.isNotEmpty) ..[
+                        ContentCarousel(
+                          title: 'New Releases',
+                          items: _newReleases,
+                          onItemTap: _onCarouselItemTap,
+                          cardHeight: 220,
+                          cardWidth: 140,
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+                      
                       const Text(
                         'Recently played',
                         style: TextStyle(
