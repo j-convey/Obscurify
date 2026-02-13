@@ -31,7 +31,6 @@ class SidePanel extends StatefulWidget {
 
 class _SidePanelState extends State<SidePanel> {
   late double _currentWidth;
-  bool _isDragging = false;
 
   /// Accumulates drag distance when dragging out from collapsed state.
   double _dragAccumulator = 0;
@@ -135,7 +134,6 @@ class _SidePanelState extends State<SidePanel> {
                 behavior: HitTestBehavior.translucent,
                 onHorizontalDragStart: (_) {
                   setState(() {
-                    _isDragging = true;
                     _dragAccumulator = 0;
                   });
                 },
@@ -161,11 +159,8 @@ class _SidePanelState extends State<SidePanel> {
                     }
                   });
                 },
-                onHorizontalDragEnd: (_) {
-                  setState(() {
-                    _isDragging = false;
-                  });
-                },
+                onHorizontalDragEnd: (_) {},
+
                 // Invisible hit-target wider than the visual border for easy grabbing
                 child: const SizedBox(width: 6),
               ),

@@ -268,7 +268,6 @@ class _MobileHomePageState extends State<MobileHomePage> {
                           itemCount: _recentTracks.length,
                           itemBuilder: (context, index) {
                             final track = _recentTracks[index];
-                            final serverUrl = _serverUrls[track.serverId];
                             final imageUrl = _resolver.buildImageUrl(track.thumb, track.serverId);
 
                             return ListTile(
