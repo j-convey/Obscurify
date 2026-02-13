@@ -399,10 +399,6 @@ void main() {
       await insertTestTrack(ratingKey: 'track_1', albumRatingKey: 'album_1');
       await insertTestTrack(ratingKey: 'track_2', albumRatingKey: 'album_1');
 
-      final result = await testDb
-          .query('albums', where: 'rating_key = ?', whereArgs: ['album_1']);
-      final albumId = result.first['id'] as int;
-
       await albumRepository.deleteByRatingKey('album_1', cascade: true);
 
       final album = await albumRepository.getByRatingKey('album_1');

@@ -297,7 +297,7 @@ class _BrowseTileWidgetState extends State<_BrowseTileWidget> {
             boxShadow: _isHovered
                 ? [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withValues(alpha: 0.4),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -333,7 +333,7 @@ class _BrowseTileWidgetState extends State<_BrowseTileWidget> {
                       child: Icon(
                         widget.icon,
                         size: 80,
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withValues(alpha: 0.3),
                       ),
                     ),
                   ),

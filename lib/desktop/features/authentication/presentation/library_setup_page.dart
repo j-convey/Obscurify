@@ -114,7 +114,7 @@ class _LibrarySetupPageState extends State<LibrarySetupPage> {
     });
 
     try {
-      final totalTracks = await _logic.syncLibrary(
+      await _logic.syncLibrary(
         _servers,
         _serverLibraries,
         onStatusChange: (status) {
@@ -287,10 +287,10 @@ class _LibrarySetupPageState extends State<LibrarySetupPage> {
                                 Container(
                                   padding: const EdgeInsets.all(20),
                                   decoration: BoxDecoration(
-                                    color: Colors.green.withOpacity(0.1),
+                                    color: Colors.green.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: Colors.green.withOpacity(0.3),
+                                      color: Colors.green.withValues(alpha: 0.3),
                                       width: 1,
                                     ),
                                   ),
@@ -390,7 +390,7 @@ class _LibrarySetupPageState extends State<LibrarySetupPage> {
                     color: _cardColor,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withValues(alpha: 0.3),
                         offset: const Offset(0, -2),
                         blurRadius: 8,
                       ),
@@ -517,7 +517,7 @@ class _LibrarySetupPageState extends State<LibrarySetupPage> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: _primaryColor.withOpacity(0.2),
+                  color: _primaryColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(

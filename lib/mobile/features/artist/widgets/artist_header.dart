@@ -42,7 +42,7 @@ class ArtistHeader extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  Colors.black.withOpacity(0.2),
+                  Colors.black.withValues(alpha: 0.2),
                   const Color(0xFF121212),
                 ],
                 stops: const [0.0, 0.6, 1.0],

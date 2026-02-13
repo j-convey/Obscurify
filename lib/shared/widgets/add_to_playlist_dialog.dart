@@ -40,7 +40,6 @@ class AddToPlaylistDialog extends StatefulWidget {
     // Get the button's position
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
     final Offset? offset = renderBox?.localToGlobal(Offset.zero);
-    final Size? size = renderBox?.size;
 
     return showGeneralDialog<bool>(
       context: context,
