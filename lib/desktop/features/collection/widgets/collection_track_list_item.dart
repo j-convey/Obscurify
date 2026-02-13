@@ -3,6 +3,8 @@ import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/services/plex/plex_services.dart';
 import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'package:obscurify/core/database/database_service.dart';
+import 'package:obscurify/core/models/playlist.dart';
+import 'package:obscurify/shared/widgets/add_to_playlist_dialog.dart';
 import 'package:obscurify/desktop/features/album/album_page.dart';
 import 'package:obscurify/desktop/features/artist/artist_page.dart';
 
@@ -53,9 +55,104 @@ class CollectionTrackListItem extends StatefulWidget {
 class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
   bool _isAlbumHovered = false;
   bool _isArtistHovered = false;
+  bool? _isInPlaylist; // null = loading, true = in playlist, false = not in playlist
   final DatabaseService _dbService = DatabaseService();
   final PlexServerService _serverService = PlexServerService();
   final PlexConnectionResolver _resolver = PlexConnectionResolver();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPlaylistStatus();
+  }
+
+  Future<void> _checkPlaylistStatus() async {
+    final ratingKey = widget.track['ratingKey']?.toString() ??
+        widget.track['rating_key']?.toString();
+    
+    if (ratingKey == null) {
+      setState(() => _isInPlaylist = false);
+      return;
+    }
+
+    try {
+      final inPlaylist = await _dbService.playlists.isTrackInAnyPlaylist(ratingKey);
+      if (mounted) {
+        setState(() => _isInPlaylist = inPlaylist);
+      }
+    } catch (e) {
+      debugPrint('Error checking playlist status for track: $e');
+      if (mounted) {
+        setState(() => _isInPlaylist = false);
+      }
+    }
+  }
+
+  /// Adds the current track to the "Liked Songs" playlist, creating it if needed.
+  Future<void> _addToLikedPlaylist(String trackId) async {
+    Playlist? liked = await _dbService.playlists.getByTitle('Liked Songs');
+    if (liked == null) {
+      final newId = 'local_liked_${DateTime.now().millisecondsSinceEpoch}';
+      liked = Playlist(
+        id: newId,
+        title: 'Liked Songs',
+        smart: false,
+        serverId: '',
+      );
+      await _dbService.playlists.save(liked);
+    }
+    await _dbService.playlists.addTrack(liked.id, trackId);
+    await _checkPlaylistStatus();
+    // Refresh the player bar status if this track is currently playing
+    widget.audioPlayerService?.refreshPlaylistStatus();
+  }
+
+  /// Builds the playlist add/check button.
+  /// - If the track is NOT in any playlist: shows a grey circle-plus icon.
+  ///   Tapping it adds to "Liked Songs" instantly.
+  /// - If the track IS in a playlist: shows a green circle-check icon.
+  ///   Tapping it opens the playlist picker dialog.
+  Widget _buildPlaylistButton() {
+    final ratingKey = widget.track['ratingKey']?.toString() ??
+        widget.track['rating_key']?.toString();
+
+    // Use Builder to capture the button's context for positioning the dialog
+    return Builder(
+      builder: (buttonContext) {
+        return IconButton(
+          icon: Icon(
+            _isInPlaylist == true ? Icons.check_circle : Icons.add_circle_outline,
+            size: 18,
+          ),
+          color: _isInPlaylist == true ? Colors.green : Colors.grey[400],
+          onPressed: ratingKey == null
+              ? null
+              : () async {
+                  if (_isInPlaylist == true) {
+                    // Already in a playlist — open picker dialog
+                    final changed = await AddToPlaylistDialog.show(
+                      buttonContext,
+                      trackId: ratingKey,
+                      trackTitle: widget.track['title'] as String? ?? 'Unknown',
+                      serverUrl: widget.currentServerUrl,
+                      token: widget.currentToken,
+                      preferBelow: true, // Enable dynamic positioning for library page
+                    );
+                    if (changed == true) {
+                      await _checkPlaylistStatus();
+                      widget.audioPlayerService?.refreshPlaylistStatus();
+                    }
+                  } else {
+                    // Not in any playlist — add to Liked Songs
+                    await _addToLikedPlaylist(ratingKey);
+                  }
+                },
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -138,16 +235,9 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    if (widget.isHovered) ...[
-                      IconButton(
-                        icon: const Icon(Icons.favorite_border, size: 18),
-                        color: Colors.grey[400],
-                        onPressed: () {
-                          // TODO: Like song
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
+                    // Show checkmark always if in playlist, otherwise show plus on hover
+                    if (_isInPlaylist == true || widget.isHovered) ...[
+                      _buildPlaylistButton(),
                       const SizedBox(width: 12),
                     ],
                     Text(

@@ -27,8 +27,8 @@ class AddToPlaylistDialog extends StatefulWidget {
     this.token,
   });
 
-  /// Shows the dialog as a popup anchored above the given button context.
-  /// The bottom-left corner of the dialog will appear above the button.
+  /// Shows the dialog as a popup anchored near the given button context.
+  /// Automatically positions below or above based on available space.
   /// Returns true if any changes were made.
   static Future<bool?> show(
     BuildContext context, {
@@ -36,10 +36,12 @@ class AddToPlaylistDialog extends StatefulWidget {
     required String trackTitle,
     String? serverUrl,
     String? token,
+    bool preferBelow = false, // Default: show above (for player bar at bottom)
   }) {
     // Get the button's position
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
     final Offset? offset = renderBox?.localToGlobal(Offset.zero);
+    final Size? buttonSize = renderBox?.size;
 
     return showGeneralDialog<bool>(
       context: context,
@@ -47,11 +49,32 @@ class AddToPlaylistDialog extends StatefulWidget {
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       barrierColor: Colors.black54,
       pageBuilder: (context, animation, secondaryAnimation) {
+        final screenHeight = MediaQuery.of(context).size.height;
+        final screenWidth = MediaQuery.of(context).size.width;
+        final buttonBottom = (offset?.dy ?? 0) + (buttonSize?.height ?? 0);
+        final buttonLeft = offset?.dx ?? 0;
+        final buttonRight = buttonLeft + (buttonSize?.width ?? 0);
+        final spaceBelow = screenHeight - buttonBottom;
+        final spaceAbove = offset?.dy ?? 0;
+        
+        // Estimated dialog dimensions
+        const estimatedDialogHeight = 400.0;
+        const estimatedDialogWidth = 300.0;
+        
+        // Decide vertical position: show below if there's enough space, otherwise above
+        final showBelow = preferBelow && (spaceBelow >= estimatedDialogHeight || spaceBelow > spaceAbove);
+        
+        // Decide horizontal position: show to the right if there's space, otherwise to the left
+        final spaceRight = screenWidth - buttonLeft;
+        final showRight = spaceRight >= estimatedDialogWidth;
+
         return Stack(
           children: [
             Positioned(
-              left: offset?.dx ?? 0,
-              bottom: MediaQuery.of(context).size.height - (offset?.dy ?? 0) + 8,
+              left: showRight ? buttonLeft : null,
+              right: showRight ? null : screenWidth - buttonRight,
+              top: showBelow ? buttonBottom + 8 : null,
+              bottom: showBelow ? null : screenHeight - (offset?.dy ?? 0) + 8,
               child: Material(
                 color: Colors.transparent,
                 child: AddToPlaylistDialog(
