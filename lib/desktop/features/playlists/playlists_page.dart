@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:obscurify/core/models/playlist.dart';
 import 'package:obscurify/core/services/storage_service.dart';
+import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/desktop/features/collection/collection_page.dart';
 import 'package:obscurify/desktop/features/collection/widgets/collection_header.dart';
@@ -29,6 +30,7 @@ class PlaylistsPage extends StatefulWidget {
 class _PlaylistsPageState extends State<PlaylistsPage> {
   final PlaylistService _playlistService = PlaylistService();
   final StorageService _storageService = StorageService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   final ScrollController _scrollController = ScrollController();
   List<Playlist> _playlists = [];
   bool _isLoading = true;
@@ -53,7 +55,8 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
     });
 
     try {
-      final token = await _storageService.getPlexToken();
+      await _resolver.initialise();
+      final token = _resolver.userToken;
       
       debugPrint('PLAYLISTS PAGE: Token: ${token != null ? "exists" : "null"}');
 
@@ -62,19 +65,18 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
         return;
       }
 
-      _token = token;
-
-      // Get the stored server URL and ID for the selected server
-      final serverUrl = await _storageService.getSelectedServerUrl();
+      // Get the connection for the selected server
+      final connection = await _resolver.getSelectedServerConnection();
       
-      debugPrint('PLAYLISTS PAGE: Server URL from storage: $serverUrl');
+      debugPrint('PLAYLISTS PAGE: Server URL from resolver: ${connection?.url}');
 
-      if (serverUrl == null) {
+      if (connection == null) {
         await _loadLocalPlaylists('No server URL saved - please select a library in Settings');
         return;
       }
 
-      _serverUrl = serverUrl;
+      _token = connection.token;
+      _serverUrl = connection.url;
 
       // Get the serverId from the selected servers map
       final selectedServers = await _storageService.getSelectedServers();
@@ -169,15 +171,21 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
   }
 
   void _navigateToPlaylist(Playlist playlist) {
-    final imageUrl = playlist.composite != null
+    final imageUrl = _resolver.buildImageUrl(
+      playlist.composite,
+      playlist.serverId.isNotEmpty ? playlist.serverId : null,
+    ) ?? (playlist.composite != null
         ? '$_serverUrl${playlist.composite}?X-Plex-Token=$_token'
-        : null;
+        : null);
+
+    final serverId = playlist.serverId.isNotEmpty ? playlist.serverId : null;
+    final effectiveToken = _resolver.getTokenForServer(serverId) ?? _token!;
 
     widget.onNavigate(
       _PlaylistDetailPage(
         playlist: playlist,
         serverUrl: _serverUrl!,
-        token: _token!,
+        token: effectiveToken,
         imageUrl: imageUrl,
         audioPlayerService: widget.audioPlayerService,
         playlistService: _playlistService,
@@ -221,6 +229,7 @@ class _PlaylistDetailPage extends StatefulWidget {
 }
 
 class _PlaylistDetailPageState extends State<_PlaylistDetailPage> {
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   List<Map<String, dynamic>>? _tracks;
   bool _isLoading = true;
   String? _error;
@@ -242,6 +251,7 @@ class _PlaylistDetailPageState extends State<_PlaylistDetailPage> {
         widget.serverUrl,
         widget.token,
         widget.playlist.id,
+        serverId: widget.playlist.serverId.isNotEmpty ? widget.playlist.serverId : null,
       );
 
       if (mounted) {
@@ -294,6 +304,9 @@ class _PlaylistDetailPageState extends State<_PlaylistDetailPage> {
       );
     }
 
+    final serverId = widget.playlist.serverId.isNotEmpty ? widget.playlist.serverId : null;
+    final effectiveToken = _resolver.getTokenForServer(serverId) ?? widget.token;
+
     return CollectionPage(
       title: widget.playlist.title,
       subtitle: '${widget.playlist.leafCount} songs',
@@ -301,8 +314,8 @@ class _PlaylistDetailPageState extends State<_PlaylistDetailPage> {
       audioPlayerService: widget.audioPlayerService,
       tracks: _tracks,
       imageUrl: widget.imageUrl,
-      currentToken: widget.token,
-      serverUrls: {}, // Playlist tracks don't need server mapping
+      currentToken: effectiveToken,
+      serverUrls: _resolver.serverUrls,
       currentServerUrl: widget.serverUrl,
       emptyMessage: 'This playlist is empty.',
       onNavigate: widget.onNavigate,
@@ -328,9 +341,12 @@ class _PlaylistCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = playlist.composite != null
-        ? '$serverUrl${playlist.composite}?X-Plex-Token=$token'
-        : null;
+    final resolver = PlexConnectionResolver();
+    final serverId = playlist.serverId.isNotEmpty ? playlist.serverId : null;
+    final imageUrl = resolver.buildImageUrl(playlist.composite, serverId)
+        ?? (playlist.composite != null
+            ? '$serverUrl${playlist.composite}?X-Plex-Token=$token'
+            : null);
 
     return GestureDetector(
       onTap: onTap,

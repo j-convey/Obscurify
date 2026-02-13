@@ -67,7 +67,6 @@ class AlbumHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = gradientColors ?? _defaultGradientColors;
-    final displaySubtitle = subtitle ?? '$title • Album';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),

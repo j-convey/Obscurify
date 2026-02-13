@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:obscurify/core/models/playlist.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/services/playlist_service.dart';
+import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'package:obscurify/desktop/features/collection/collection_page.dart';
 import 'package:obscurify/desktop/features/collection/widgets/collection_header.dart';
 
@@ -38,6 +39,7 @@ class PlaylistDetailPage extends StatefulWidget {
 
 class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
   final PlaylistService _playlistService = PlaylistService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   List<Map<String, dynamic>>? _tracks;
   bool _isLoading = true;
   String? _error;
@@ -59,6 +61,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
         widget.serverUrl,
         widget.token,
         widget.playlist.id,
+        serverId: widget.playlist.serverId.isNotEmpty ? widget.playlist.serverId : null,
       );
 
       if (mounted) {
@@ -105,6 +108,9 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
       );
     }
 
+    final serverId = widget.playlist.serverId.isNotEmpty ? widget.playlist.serverId : null;
+    final effectiveToken = _resolver.getTokenForServer(serverId) ?? widget.token;
+
     return CollectionPage(
       title: widget.playlist.title,
       subtitle: '${widget.playlist.leafCount} songs',
@@ -112,8 +118,8 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
       audioPlayerService: widget.audioPlayerService,
       tracks: _tracks,
       imageUrl: widget.imageUrl,
-      currentToken: widget.token,
-      serverUrls: {},
+      currentToken: effectiveToken,
+      serverUrls: _resolver.serverUrls,
       currentServerUrl: widget.serverUrl,
       emptyMessage: 'This playlist is empty.',
       onNavigate: widget.onNavigate,

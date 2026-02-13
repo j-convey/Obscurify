@@ -234,7 +234,7 @@ class AlbumRepository extends BaseRepository {
           final albumWithArtistId = album.copyWith(artistId: artistId);
           
           if (batchStart < 3) {
-            debugPrint('ALBUM_REPOSITORY: Saving album \"${albumWithArtistId.title}\" with ratingKey=\"${albumWithArtistId.ratingKey}\", originallyAvailableAt=${albumWithArtistId.originallyAvailableAt}');
+            debugPrint('ALBUM_REPOSITORY: Saving album "${albumWithArtistId.title}" with ratingKey="${albumWithArtistId.ratingKey}", originallyAvailableAt=${albumWithArtistId.originallyAvailableAt}');
           }
           
           // Use INSERT OR REPLACE to update existing albums

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
+import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'widgets/collection_header.dart';
 import 'widgets/collection_action_buttons.dart';
 import 'widgets/collection_sticky_header_delegate.dart';
@@ -211,17 +212,20 @@ class _CollectionPageState extends State<CollectionPage> {
     if (_tracks.isNotEmpty &&
         widget.audioPlayerService != null &&
         _currentToken != null) {
+      final resolver = PlexConnectionResolver();
       final track = _tracks[0];
       final serverId = track['serverId'] as String?;
       final serverUrl = serverId != null
           ? _serverUrls[serverId]
           : _currentServerUrl;
+      // Use resolver for correct token (handles shared servers)
+      final effectiveToken = resolver.getTokenForServer(serverId) ?? _currentToken!;
 
       if (serverUrl != null) {
         widget.audioPlayerService!.setPlayQueue(_tracks, 0);
         widget.audioPlayerService!.playTrack(
           track,
-          _currentToken!,
+          effectiveToken,
           serverUrl,
         );
       }

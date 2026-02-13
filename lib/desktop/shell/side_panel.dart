@@ -31,7 +31,6 @@ class SidePanel extends StatefulWidget {
 
 class _SidePanelState extends State<SidePanel> {
   late double _currentWidth;
-  bool _isHandleHovered = false;
   bool _isDragging = false;
 
   /// Accumulates drag distance when dragging out from collapsed state.
@@ -132,12 +131,6 @@ class _SidePanelState extends State<SidePanel> {
             right: 0,
             child: MouseRegion(
               cursor: SystemMouseCursors.resizeColumn,
-              onEnter: (_) => setState(() => _isHandleHovered = true),
-              onExit: (_) {
-                if (!_isDragging) {
-                  setState(() => _isHandleHovered = false);
-                }
-              },
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onHorizontalDragStart: (_) {
@@ -171,7 +164,6 @@ class _SidePanelState extends State<SidePanel> {
                 onHorizontalDragEnd: (_) {
                   setState(() {
                     _isDragging = false;
-                    _isHandleHovered = false;
                   });
                 },
                 // Invisible hit-target wider than the visual border for easy grabbing

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/services/storage_service.dart';
 import 'package:obscurify/core/services/home_data_service.dart';
-import 'package:obscurify/core/services/plex/plex_services.dart';
+import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'package:obscurify/core/database/database_service.dart';
 import 'package:obscurify/shared/widgets/content_carousel.dart';
-import 'package:obscurify/desktop/features/songs/songs_page.dart';
+import 'package:obscurify/desktop/features/library/library_page.dart';
 import 'package:obscurify/desktop/features/playlists/playlists_page.dart';
 import 'package:obscurify/desktop/features/artist/artists_list_page.dart';
 import 'package:obscurify/desktop/features/artist/artist_page.dart';
@@ -39,8 +39,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final HomeDataService _homeDataService = HomeDataService();
-  final PlexServerService _serverService = PlexServerService();
-  final StorageService _storageService = StorageService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   final DatabaseService _dbService = DatabaseService();
 
   List<CarouselItem> _newReleases = [];
@@ -69,36 +68,31 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() => _isLoading = true);
 
     try {
-      // Resolve credentials: prefer widget props, fall back to storage/server service
-      String? token = widget.token;
-      String? serverUrl = widget.serverUrl;
-
-      token ??= await _storageService.getPlexToken();
-
-      // Prefer the stored selected server URL (set during sync/settings)
-      // as it uses the connection that was validated to work
-      if (serverUrl == null || serverUrl.isEmpty) {
-        serverUrl = await _storageService.getSelectedServerUrl();
+      // Use the resolver for all URL/token resolution
+      await _resolver.initialise();
+      
+      String? token = _resolver.userToken;
+      _resolvedServerUrls = _resolver.serverUrls;
+      
+      // If no cached URLs, fetch from API
+      if (_resolvedServerUrls.isEmpty && token != null) {
+        _resolvedServerUrls = await _resolver.fetchAndCacheServerUrls();
       }
 
-      if (token != null && (serverUrl == null || serverUrl.isEmpty)) {
-        _resolvedServerUrls = await _serverService.fetchServerUrlMap(token);
-        if (_resolvedServerUrls.isNotEmpty) {
-          serverUrl = _resolvedServerUrls.values.first;
-        }
-      } else if (token != null) {
-        // Still load the URL map for navigation purposes
-        _resolvedServerUrls = await _storageService.getServerUrlMap();
-        if (_resolvedServerUrls.isEmpty) {
-          _resolvedServerUrls = await _serverService.fetchServerUrlMap(token);
-        }
+      // Get the selected server connection (respects shared server tokens)
+      final connection = await _resolver.getSelectedServerConnection();
+      String? serverUrl = connection?.url;
+      // For API calls, use the connection token (could be shared server token)
+      token = connection?.token ?? token;
+      
+      if (serverUrl == null && _resolvedServerUrls.isNotEmpty) {
+        serverUrl = _resolvedServerUrls.values.first;
       }
 
       _resolvedToken = token;
       _resolvedServerUrl = serverUrl;
 
       if (token == null || serverUrl == null || serverUrl.isEmpty) {
-        // No credentials yet – just show empty state, don't error
         if (mounted) setState(() => _isLoading = false);
         return;
       }
@@ -138,11 +132,16 @@ class _HomePageState extends State<HomePage> {
 
     switch (item.type) {
       case CarouselItemType.artist:
+        // For artist navigation, use per-server token if available
+        final serverId = item.data?['serverId'] as String?;
+        final effectiveToken = _resolver.getTokenForServer(serverId) ?? token;
+        final effectiveUrl = _resolver.getUrlForServer(serverId) ?? serverUrl;
+        
         widget.onNavigate!(ArtistPage(
           artistId: item.id,
           artistName: item.title,
-          serverUrl: serverUrl,
-          token: token,
+          serverUrl: effectiveUrl,
+          token: effectiveToken,
           audioPlayerService: widget.audioPlayerService,
           onNavigate: widget.onNavigate,
         ));
@@ -173,15 +172,17 @@ class _HomePageState extends State<HomePage> {
         break;
 
       case CarouselItemType.track:
-        // Play the track directly
+        // Play the track directly - use per-server token
         if (widget.audioPlayerService != null && item.data != null) {
-          widget.audioPlayerService!.setServerUrls(
-            {item.data!['serverId'] as String? ?? '': serverUrl},
-          );
+          final serverId = item.data!['serverId'] as String?;
+          final effectiveToken = _resolver.getTokenForServer(serverId) ?? token;
+          final effectiveUrl = _resolver.getUrlForServer(serverId) ?? serverUrl;
+          
+          widget.audioPlayerService!.setServerUrls(_resolvedServerUrls);
           widget.audioPlayerService!.playTrack(
             item.data!,
-            token,
-            serverUrl,
+            effectiveToken,
+            effectiveUrl,
           );
         }
         break;
@@ -222,7 +223,7 @@ class _HomePageState extends State<HomePage> {
                         color: Colors.purple,
                         onTap: () {
                           if (widget.onNavigate != null) {
-                            widget.onNavigate!(SongsPage(
+                            widget.onNavigate!(LibraryPage(
                               audioPlayerService: widget.audioPlayerService,
                               onNavigate: widget.onNavigate,
                               onHomeTap: widget.onHomeTap,

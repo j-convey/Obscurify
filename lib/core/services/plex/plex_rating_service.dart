@@ -26,7 +26,8 @@ class PlexRatingService {
       final url = '$serverUrl/:/rate'
           '?identifier=com.plexapp.plugins.library'
           '&key=$ratingKey'
-          '&rating=$clampedRating';
+          '&rating=$clampedRating'
+          '&X-Plex-Token=$token';
 
       debugPrint('RATING: Setting rating $clampedRating for item $ratingKey');
       

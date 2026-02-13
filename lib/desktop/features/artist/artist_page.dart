@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:obscurify/core/models/artist.dart';
 import 'package:obscurify/core/services/plex/plex_artist_service.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
+import 'package:obscurify/core/navigation/album_navigation_helper.dart';
 import 'artist_albums_carousel.dart';
-import '../album/album_page.dart';
 
 /// Artist page displaying artist info and popular tracks.
 /// Inspired by Spotify's artist page design.
@@ -564,46 +564,16 @@ class _ArtistPageState extends State<ArtistPage> {
       return;
     }
 
-    // Build image URL if thumb exists
-    String? imageUrl;
-    if (albumThumb != null) {
-      imageUrl = _buildImageUrl(albumThumb);
-    }
-
-    // Create AlbumPage
-    final albumPage = AlbumPage(
-      title: albumTitle,
-      imageUrl: imageUrl,
+    AlbumNavigationHelper.navigateToAlbum(
+      context: context,
+      albumRatingKey: albumId,
+      albumTitle: albumTitle,
+      albumThumb: albumThumb,
+      serverUrl: widget.serverUrl,
+      token: widget.token,
       audioPlayerService: widget.audioPlayerService,
-      currentToken: widget.token,
-      currentServerUrl: widget.serverUrl,
-      onLoadTracks: () async {
-        // Fetch album tracks from Plex API
-        final tracks = await _artistService.getAlbumTracks(
-          albumId: albumId,
-          serverUrl: widget.serverUrl,
-          token: widget.token,
-        );
-        
-        // Normalize track data to include 'artist' field for player bar
-        return tracks.map((track) {
-          // Add 'artist' field if missing (Plex uses 'grandparentTitle')
-          if (track['artist'] == null && track['grandparentTitle'] != null) {
-            track['artist'] = track['grandparentTitle'];
-          }
-          return track;
-        }).toList();
-      },
       onNavigate: widget.onNavigate,
+      artistService: _artistService,
     );
-
-    // Navigate to album page
-    if (widget.onNavigate != null) {
-      widget.onNavigate!(albumPage);
-    } else {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => albumPage),
-      );
-    }
   }
 }

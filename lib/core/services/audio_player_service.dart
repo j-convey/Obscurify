@@ -21,6 +21,7 @@ class AudioPlayerService extends ChangeNotifier {
   String? _currentToken;
   String? _currentServerUrl;
   Map<String, String> _serverUrls = {}; // Map of serverId to serverUrl
+  Map<String, String> _serverAccessTokens = {}; // Map of serverId to accessToken (shared servers)
   bool _isDisposed = false; // Flag to track disposal state
 
   AudioPlayerService() {
@@ -83,6 +84,23 @@ class AudioPlayerService extends ChangeNotifier {
     if (_isDisposed) return;
     _serverUrls = urls;
     debugPrint('PLAYER: Server URLs updated: ${_serverUrls.keys.join(", ")}');
+  }
+
+  // Set server access tokens map (for shared servers)
+  void setServerAccessTokens(Map<String, String> tokens) {
+    if (_isDisposed) return;
+    _serverAccessTokens = tokens;
+    debugPrint('PLAYER: Server access tokens updated: ${_serverAccessTokens.keys.join(", ")}');
+  }
+
+  /// Get the correct token for a given serverId.
+  /// Returns the server-specific access token for shared servers,
+  /// or falls back to the current user token.
+  String? _getTokenForServer(String? serverId) {
+    if (serverId != null && _serverAccessTokens.containsKey(serverId)) {
+      return _serverAccessTokens[serverId];
+    }
+    return _currentToken;
   }
 
   // Setter for the play queue (without auto-playing)
@@ -304,13 +322,14 @@ class AudioPlayerService extends ChangeNotifier {
       final serverUrl = trackServerId != null && _serverUrls.containsKey(trackServerId)
           ? _serverUrls[trackServerId]!
           : _currentServerUrl;
+      final token = _getTokenForServer(trackServerId);
       
-      if (serverUrl == null) {
-        debugPrint('PLAYER: ERROR - No server URL for next track');
+      if (serverUrl == null || token == null) {
+        debugPrint('PLAYER: ERROR - No server URL or token for next track');
         return;
       }
       
-      await playTrack(nextTrack, _currentToken!, serverUrl);
+      await playTrack(nextTrack, token, serverUrl);
     } else {
       // Reached the end of the queue
       debugPrint('PLAYER: Reached end of queue, stopping playback');
@@ -349,13 +368,14 @@ class AudioPlayerService extends ChangeNotifier {
       final serverUrl = trackServerId != null && _serverUrls.containsKey(trackServerId)
           ? _serverUrls[trackServerId]!
           : _currentServerUrl;
+      final token = _getTokenForServer(trackServerId);
       
-      if (serverUrl == null) {
-        debugPrint('PLAYER: ERROR - No server URL for previous track');
+      if (serverUrl == null || token == null) {
+        debugPrint('PLAYER: ERROR - No server URL or token for previous track');
         return;
       }
       
-      await playTrack(prevTrack, _currentToken!, serverUrl);
+      await playTrack(prevTrack, token, serverUrl);
     } else {
       // At the beginning of the queue, restart current track
       debugPrint('PLAYER: At beginning of queue, restarting current track');

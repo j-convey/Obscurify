@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/database/database_service.dart';
-import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/plex_connection_resolver.dart';
 import '../../../../core/services/audio_player_service.dart';
 import '../../../../core/models/track.dart';
 import '../artist/mobile_artist_page.dart';
@@ -22,7 +22,7 @@ class MobileSearchPage extends StatefulWidget {
 class _MobileSearchPageState extends State<MobileSearchPage> {
   final TextEditingController _controller = TextEditingController();
   final DatabaseService _dbService = DatabaseService();
-  final StorageService _storageService = StorageService(); // To get token for images
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
 
   List<Track> _trackResults = [];
   List<Map<String, dynamic>> _artistResults = [];
@@ -44,12 +44,11 @@ class _MobileSearchPageState extends State<MobileSearchPage> {
   }
 
   Future<void> _loadCredentials() async {
-    final token = await _storageService.getPlexToken();
-    final urlMap = await _storageService.getServerUrlMap();
+    await _resolver.initialise();
     if (mounted) {
       setState(() {
-        _token = token;
-        _serverUrls = urlMap;
+        _token = _resolver.userToken;
+        _serverUrls = _resolver.serverUrls;
       });
     }
   }
@@ -95,12 +94,14 @@ class _MobileSearchPageState extends State<MobileSearchPage> {
     final serverUrl = _serverUrls[track.serverId];
     if (serverUrl == null) return;
 
+    final token = _resolver.getTokenForServer(track.serverId) ?? _token!;
+
     // Create a queue from the search results
     final queue = _trackResults.map((t) => t.toJson()).toList();
     final index = _trackResults.indexOf(track);
 
     widget.audioPlayerService!.setPlayQueue(queue, index);
-    widget.audioPlayerService!.playTrack(track.toJson(), _token!, serverUrl);
+    widget.audioPlayerService!.playTrack(track.toJson(), token, serverUrl);
   }
 
   void _navigateToArtist(Map<String, dynamic> artist) {
