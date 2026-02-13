@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/services/plex/plex_services.dart';
 import 'server_settings_logic.dart';
 import 'widgets/plex_auth_card.dart';
@@ -7,7 +8,12 @@ import 'widgets/sync_progress_card.dart';
 import 'widgets/authentication_info_card.dart';
 
 class ServerSettingsPage extends StatefulWidget {
-  const ServerSettingsPage({super.key});
+  final AudioPlayerService? audioPlayerService;
+
+  const ServerSettingsPage({
+    super.key,
+    this.audioPlayerService,
+  });
 
   @override
   State<ServerSettingsPage> createState() => _ServerSettingsPageState();
@@ -15,6 +21,7 @@ class ServerSettingsPage extends StatefulWidget {
 
 class _ServerSettingsPageState extends State<ServerSettingsPage> {
   final _logic = ServerSettingsLogic();
+  AudioPlayerService? get _audioPlayerService => widget.audioPlayerService;
 
   bool _isAuthenticated = false;
   bool _isLoading = false;
@@ -252,6 +259,9 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
     );
 
     if (confirmed == true) {
+      // Stop and clear the player bar
+      await _audioPlayerService?.stop();
+      
       await _logic.signOut();
       if (!mounted) return;
       setState(() {

@@ -73,7 +73,10 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _onSettingsTap() {
-    _navigateToPage(SettingsPage(onNavigate: _navigateToPage));
+    _navigateToPage(SettingsPage(
+      onNavigate: _navigateToPage,
+      audioPlayerService: _audioPlayerService,
+    ));
   }
 
   void _onProfileTap() {

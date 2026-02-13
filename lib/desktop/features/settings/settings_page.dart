@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:obscurify/core/services/audio_player_service.dart';
 import 'server/server_settings_page.dart';
 
 class SettingsPage extends StatelessWidget {
   final void Function(Widget) onNavigate;
+  final AudioPlayerService? audioPlayerService;
 
-  const SettingsPage({super.key, required this.onNavigate});
+  const SettingsPage({
+    super.key,
+    required this.onNavigate,
+    this.audioPlayerService,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +25,9 @@ class SettingsPage extends StatelessWidget {
                 style: TextStyle(color: Colors.grey)),
             trailing: const Icon(Icons.chevron_right, color: Colors.white),
             onTap: () {
-              onNavigate(const ServerSettingsPage());
+              onNavigate(ServerSettingsPage(
+                audioPlayerService: audioPlayerService,
+              ));
             },
           ),
           const Divider(),
