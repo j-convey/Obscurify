@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/audio_player_service.dart';
-import '../../../core/services/plex/plex_services.dart';
-import '../../../core/services/storage_service.dart';
+import '../../../core/services/plex_connection_resolver.dart';
 import '../../../core/database/database_service.dart';
 import '../../../core/models/track.dart';
 import '../../../core/services/library_change_notifier.dart';
@@ -30,8 +29,7 @@ class MobileHomePage extends StatefulWidget {
 
 class _MobileHomePageState extends State<MobileHomePage> {
   final DatabaseService _db = DatabaseService();
-  final PlexServerService _serverService = PlexServerService();
-  final StorageService _storageService = StorageService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   final LibraryChangeNotifier _libraryNotifier = LibraryChangeNotifier();
   
   List<Track> _recentTracks = [];
@@ -58,23 +56,23 @@ class _MobileHomePageState extends State<MobileHomePage> {
     // Load tracks
     final tracks = await _db.tracks.getRecent(limit: 20);
     
-    // Load server info
-    final token = await _storageService.getPlexToken();
-    Map<String, String> urls = {};
-    if (token != null) {
-      urls = await _serverService.fetchServerUrlMap(token);
-    }
+    // Load server info via resolver
+    await _resolver.initialise();
+    final urls = await _resolver.fetchAndCacheServerUrls();
     
     if (mounted) {
       setState(() {
         _recentTracks = tracks;
-        _currentToken = token;
+        _currentToken = _resolver.userToken;
         _serverUrls = urls;
         _isLoading = false;
       });
       
-      // Update player service with server URLs
+      // Update player service with server URLs and access tokens
       widget.audioPlayerService?.setServerUrls(urls);
+      widget.audioPlayerService?.setServerAccessTokens(
+        {for (final id in urls.keys) id: _resolver.getTokenForServer(id) ?? ''},
+      );
     }
   }
 
@@ -96,6 +94,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
       return;
     }
 
+    final token = _resolver.getTokenForServer(track.serverId) ?? _currentToken!;
+
     // Set queue with recent tracks
     final trackMaps = _recentTracks.map((t) => t.toJson()).toList();
     final index = _recentTracks.indexOf(track);
@@ -103,7 +103,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
     widget.audioPlayerService!.setPlayQueue(trackMaps, index);
     await widget.audioPlayerService!.playTrack(
       track.toJson(),
-      _currentToken!,
+      token,
       serverUrl,
     );
   }
@@ -204,9 +204,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
                           itemBuilder: (context, index) {
                             final track = _recentTracks[index];
                             final serverUrl = _serverUrls[track.serverId];
-                            final imageUrl = track.thumb != null && serverUrl != null && _currentToken != null
-                                ? '$serverUrl${track.thumb!}?X-Plex-Token=$_currentToken'
-                                : null;
+                            final imageUrl = _resolver.buildImageUrl(track.thumb, track.serverId);
 
                             return ListTile(
                               contentPadding: EdgeInsets.zero,

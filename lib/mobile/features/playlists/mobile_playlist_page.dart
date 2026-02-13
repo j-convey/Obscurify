@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/models/playlist.dart';
 import '../../../../core/models/track.dart';
-import '../../../../core/services/plex/plex_services.dart';
-import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/plex_connection_resolver.dart';
 import '../../../../core/services/audio_player_service.dart';
 import '../library/widgets/track_options_sheet.dart';
 
@@ -23,8 +22,7 @@ class MobilePlaylistPage extends StatefulWidget {
 
 class _MobilePlaylistPageState extends State<MobilePlaylistPage> {
   final DatabaseService _db = DatabaseService();
-  final PlexServerService _serverService = PlexServerService();
-  final StorageService _storageService = StorageService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
 
   List<Track> _tracks = [];
   bool _isLoading = true;
@@ -68,16 +66,13 @@ class _MobilePlaylistPageState extends State<MobilePlaylistPage> {
       // Load playlist tracks
       final tracks = await _db.playlists.getTracks(widget.playlist.id);
       
-      final token = await _storageService.getPlexToken();
-      Map<String, String> urls = {};
-      if (token != null) {
-        urls = await _serverService.fetchServerUrlMap(token);
-      }
+      await _resolver.initialise();
+      final urls = await _resolver.fetchAndCacheServerUrls();
 
       if (mounted) {
         setState(() {
           _tracks = tracks;
-          _currentToken = token;
+          _currentToken = _resolver.userToken;
           _serverUrls = urls;
           _isLoading = false;
         });
@@ -101,13 +96,15 @@ class _MobilePlaylistPageState extends State<MobilePlaylistPage> {
       return;
     }
 
+    final token = _resolver.getTokenForServer(track.serverId) ?? _currentToken!;
+
     final trackMaps = _tracks.map((t) => t.toJson()).toList();
     final index = _tracks.indexOf(track);
 
     widget.audioPlayerService!.setPlayQueue(trackMaps, index);
     await widget.audioPlayerService!.playTrack(
       track.toJson(),
-      _currentToken!,
+      token,
       serverUrl,
     );
   }
@@ -134,13 +131,10 @@ class _MobilePlaylistPageState extends State<MobilePlaylistPage> {
   @override
   Widget build(BuildContext context) {
     // Construct playlist image URL
-    String? playlistImageUrl;
-    if (widget.playlist.composite != null && _currentToken != null && widget.playlist.serverId.isNotEmpty) {
-      final serverUrl = _serverUrls[widget.playlist.serverId];
-      if (serverUrl != null) {
-        playlistImageUrl = '$serverUrl${widget.playlist.composite!}?X-Plex-Token=$_currentToken';
-      }
-    }
+    final playlistImageUrl = _resolver.buildImageUrl(
+      widget.playlist.composite,
+      widget.playlist.serverId,
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
@@ -233,11 +227,8 @@ class _MobilePlaylistPageState extends State<MobilePlaylistPage> {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final track = _tracks[index];
-                      String? trackImageUrl;
                       final serverUrl = _serverUrls[track.serverId];
-                      if (track.thumb != null && serverUrl != null && _currentToken != null) {
-                        trackImageUrl = '$serverUrl${track.thumb!}?X-Plex-Token=$_currentToken';
-                      }
+                      final trackImageUrl = _resolver.buildImageUrl(track.thumb, track.serverId);
 
                       return ListTile(
                         leading: Container(

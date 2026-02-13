@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/desktop/features/artist/artists_list_page.dart';
 import 'package:obscurify/desktop/features/playlists/playlists_page.dart';
-import 'package:obscurify/desktop/features/songs/songs_page.dart';
+import 'package:obscurify/desktop/features/library/library_page.dart';
 
 class BrowsePage extends StatelessWidget {
   final void Function(Widget)? onNavigate;
+  final AudioPlayerService? audioPlayerService;
 
   const BrowsePage({
     super.key,
     this.onNavigate,
+    this.audioPlayerService,
   });
 
   @override
@@ -44,7 +47,7 @@ class BrowsePage extends StatelessWidget {
                     Icons.library_music,
                     () {
                       if (onNavigate != null) {
-                        onNavigate!(SongsPage(onNavigate: onNavigate));
+                        onNavigate!(LibraryPage(onNavigate: onNavigate, audioPlayerService: audioPlayerService));
                       }
                     },
                   ),
@@ -54,7 +57,7 @@ class BrowsePage extends StatelessWidget {
                     Icons.person,
                     () {
                       if (onNavigate != null) {
-                        onNavigate!(ArtistsListPage(onNavigate: onNavigate));
+                        onNavigate!(ArtistsListPage(onNavigate: onNavigate, audioPlayerService: audioPlayerService));
                       }
                     },
                   ),
@@ -64,7 +67,7 @@ class BrowsePage extends StatelessWidget {
                     Icons.playlist_play,
                     () {
                       if (onNavigate != null) {
-                        onNavigate!(PlaylistsPage(onNavigate: onNavigate!));
+                        onNavigate!(PlaylistsPage(onNavigate: onNavigate!, audioPlayerService: audioPlayerService));
                       }
                     },
                   ),

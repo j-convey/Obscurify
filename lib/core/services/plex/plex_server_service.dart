@@ -7,11 +7,13 @@ class PlexServer {
   final String name;
   final String machineIdentifier;
   final List<PlexConnection> connections;
+  final String? accessToken;
 
   PlexServer({
     required this.name,
     required this.machineIdentifier,
     required this.connections,
+    this.accessToken,
   });
 
   factory PlexServer.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class PlexServer {
       name: json['name'] as String,
       machineIdentifier: json['clientIdentifier'] as String,
       connections: connectionsList,
+      accessToken: json['accessToken'] as String?,
     );
   }
 
@@ -31,6 +34,7 @@ class PlexServer {
       'name': name,
       'clientIdentifier': machineIdentifier,
       'connections': connections.map((c) => c.toJson()).toList(),
+      'accessToken': accessToken,
     };
   }
 }
@@ -81,7 +85,7 @@ class PlexConnection {
 class PlexServerService {
   final PlexApiClient _apiClient = PlexApiClient();
 
-  /// Fetches all owned Plex servers for the authenticated user.
+  /// Fetches all accessible Plex servers (owned or shared) for the authenticated user.
   Future<List<PlexServer>> getServers(String token) async {
     try {
       debugPrint('PLEX_SERVER_SERVICE: Fetching servers from Plex API...');
@@ -101,18 +105,20 @@ class PlexServerService {
         final servers = data
             .where((resource) {
               final isMediaServer = resource['product'] == 'Plex Media Server';
-              final isOwned = resource['owned'] == true;
+              final accessToken = resource['accessToken'];
               debugPrint(
                 'PLEX_SERVER_SERVICE: Resource "${resource['name']}" - '
-                'Product: ${resource['product']}, Owned: ${resource['owned']}',
+                'Product: ${resource['product']}, Owned: ${resource['owned']}, '
+                'AccessToken: ${accessToken != null ? "YES (${accessToken.toString().substring(0, 10)}...)" : "NO"}',
               );
-              return isMediaServer && isOwned;
+              // Include both owned and shared servers (any Plex Media Server)
+              return isMediaServer;
             })
             .map((resource) => PlexServer.fromJson(resource))
             .toList();
 
         debugPrint(
-          'PLEX_SERVER_SERVICE: Filtered to ${servers.length} owned Plex Media Servers',
+          'PLEX_SERVER_SERVICE: Filtered to ${servers.length} accessible Plex Media Servers (owned + shared)',
         );
         for (var server in servers) {
           debugPrint(

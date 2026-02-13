@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/models/playlist.dart';
-import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/plex_connection_resolver.dart';
 import '../../../../core/services/audio_player_service.dart';
 import 'widgets/playlist_grid_item.dart';
 import 'mobile_playlist_page.dart';
@@ -20,7 +20,7 @@ class MobilePlaylistsPage extends StatefulWidget {
 
 class _MobilePlaylistsPageState extends State<MobilePlaylistsPage> {
   final DatabaseService _db = DatabaseService();
-  final StorageService _storageService = StorageService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
 
   List<Playlist> _playlists = [];
   bool _isLoading = true;
@@ -34,15 +34,14 @@ class _MobilePlaylistsPageState extends State<MobilePlaylistsPage> {
   }
 
   Future<void> _loadData() async {
-    final token = await _storageService.getPlexToken();
-    final serverUrl = await _storageService.getSelectedServerUrl() ??
-        await _storageService.getServerUrl();
+    await _resolver.initialise();
+    final connection = await _resolver.getSelectedServerConnection();
     final playlists = await _db.playlists.getAll();
 
     if (mounted) {
       setState(() {
-        _token = token;
-        _serverUrl = serverUrl;
+        _token = connection?.token;
+        _serverUrl = connection?.url;
         _playlists = playlists;
         _isLoading = false;
       });

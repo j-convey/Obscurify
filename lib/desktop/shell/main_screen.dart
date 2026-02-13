@@ -5,6 +5,7 @@ import 'side_panel.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/services/storage_service.dart';
 import 'package:obscurify/core/services/plex/plex_services.dart';
+import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'package:obscurify/core/services/authentication_check_service.dart';
 import 'package:obscurify/desktop/features/authentication/presentation/authentication_modal.dart';
 import 'package:obscurify/desktop/features/home/home_page.dart';
@@ -30,6 +31,7 @@ class _MainScreenState extends State<MainScreen> {
   late final AudioPlayerService _audioPlayerService;
   late final StorageService _storageService;
   late final AuthenticationCheckService _authCheckService;
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   final List<Widget> _navigationHistory = [];
   int _currentHistoryIndex = -1;
   String? _currentToken;
@@ -79,8 +81,19 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _loadCredentials() async {
-    _currentToken = await _storageService.getPlexToken();
-    _currentServerUrl = await _storageService.getServerUrl();
+    await _resolver.initialise();
+    _currentToken = _resolver.userToken;
+    
+    // Get the selected server connection (handles both owned and shared servers)
+    final connection = await _resolver.getSelectedServerConnection();
+    _currentServerUrl = connection?.url;
+    
+    // Update audio player with server URLs and access tokens
+    _audioPlayerService.setServerUrls(_resolver.serverUrls);
+    _audioPlayerService.setServerAccessTokens(
+      await _storageService.getServerAccessTokenMap(),
+    );
+    
     if (mounted) {
       setState(() {
         _sidePanelKey = UniqueKey(); // Force SidePanel to rebuild

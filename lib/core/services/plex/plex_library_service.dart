@@ -40,13 +40,20 @@ class PlexLibraryService {
   /// Fetches all libraries from a server.
   Future<List<PlexLibrary>> getLibraries(String token, String serverUrl) async {
     try {
+      final url = '$serverUrl/library/sections?X-Plex-Token=$token';
       debugPrint('Fetching libraries from: $serverUrl/library/sections');
+      debugPrint('Token (first 10 chars): ${token.substring(0, 10)}...');
+      debugPrint('Full URL (token redacted): $serverUrl/library/sections?X-Plex-Token=***');
+      
       final response = await _apiClient.get(
-        '$serverUrl/library/sections',
+        url,
         token: token,
       );
 
       debugPrint('Response status: ${response.statusCode}');
+      if (response.statusCode != 200) {
+        debugPrint('Response body: ${response.body}');
+      }
 
       if (response.statusCode == 200) {
         final data = _apiClient.decodeJson(response);
@@ -88,7 +95,7 @@ class PlexLibraryService {
 
       // Request with includeDetails to get full metadata including artist/album info
       // Include all necessary fields for complete track data (especially album artwork)
-      final url = '$serverUrl/library/sections/$libraryKey/all?type=10&includeExternalMedia=1&includeFields=thumb,parentThumb,grandparentThumb,grandparentArt,parentArt';
+      final url = '$serverUrl/library/sections/$libraryKey/all?type=10&includeExternalMedia=1&includeFields=thumb,parentThumb,grandparentThumb,grandparentArt,parentArt&X-Plex-Token=$token';
 
       final response = await _apiClient.getWithTimeout(
         url,
@@ -176,7 +183,7 @@ class PlexLibraryService {
       debugPrint('Library Key: $libraryKey');
 
       // Fetch albums (type=9) with all metadata fields
-      final url = '$serverUrl/library/sections/$libraryKey/all?type=9&includeExternalMedia=1';
+      final url = '$serverUrl/library/sections/$libraryKey/all?type=9&includeExternalMedia=1&X-Plex-Token=$token';
 
       final response = await _apiClient.getWithTimeout(
         url,

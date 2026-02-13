@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:obscurify/core/models/artist.dart';
 import 'package:obscurify/core/database/database_service.dart';
-import 'package:obscurify/core/services/storage_service.dart';
+import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'mobile_artist_page.dart';
 import 'widgets/artist_grid_item.dart';
@@ -20,7 +20,7 @@ class MobileArtistsListPage extends StatefulWidget {
 
 class _MobileArtistsListPageState extends State<MobileArtistsListPage> {
   final DatabaseService _dbService = DatabaseService();
-  final StorageService _storageService = StorageService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
 
   List<Artist> _artists = [];
   bool _isLoading = true;
@@ -34,15 +34,14 @@ class _MobileArtistsListPageState extends State<MobileArtistsListPage> {
   }
 
   Future<void> _loadData() async {
-    final token = await _storageService.getPlexToken();
-    final serverUrl = await _storageService.getSelectedServerUrl() ??
-        await _storageService.getServerUrl();
+    await _resolver.initialise();
+    final connection = await _resolver.getSelectedServerConnection();
     final artists = await _dbService.artists.getAll();
 
     if (mounted) {
       setState(() {
-        _token = token;
-        _serverUrl = serverUrl;
+        _token = connection?.token;
+        _serverUrl = connection?.url;
         _artists = artists;
         _isLoading = false;
       });

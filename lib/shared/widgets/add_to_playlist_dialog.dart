@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/database/database_service.dart';
 import '../../core/models/playlist.dart';
-import '../../core/services/storage_service.dart';
+import '../../core/services/plex_connection_resolver.dart';
 
 /// A reusable dialog for adding a track to playlists.
 /// Shows all playlists with checkmarks for ones the track is already in.
@@ -84,7 +84,7 @@ class AddToPlaylistDialog extends StatefulWidget {
 
 class _AddToPlaylistDialogState extends State<AddToPlaylistDialog> {
   final DatabaseService _db = DatabaseService();
-  final StorageService _storageService = StorageService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   final TextEditingController _searchController = TextEditingController();
 
   List<Playlist> _allPlaylists = [];
@@ -109,11 +109,15 @@ class _AddToPlaylistDialogState extends State<AddToPlaylistDialog> {
   }
 
   Future<void> _loadData() async {
-    // Use provided server info or fall back to storage
-    final token = widget.token ?? await _storageService.getPlexToken();
-    final serverUrl = widget.serverUrl ??
-        await _storageService.getSelectedServerUrl() ??
-        await _storageService.getServerUrl();
+    // Use provided server info or fall back to resolver
+    await _resolver.initialise();
+    String? token = widget.token;
+    String? serverUrl = widget.serverUrl;
+    if (token == null || serverUrl == null) {
+      final connection = await _resolver.getSelectedServerConnection();
+      token ??= connection?.token;
+      serverUrl ??= connection?.url;
+    }
 
     final playlists = await _db.playlists.getAll();
     final membership = <String, bool>{};

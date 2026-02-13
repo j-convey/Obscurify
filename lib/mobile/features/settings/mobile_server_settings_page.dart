@@ -143,7 +143,8 @@ class _MobileServerSettingsPageState extends State<MobileServerSettingsPage> {
 
               debugPrint('Fetching library $libraryKey from server ${server.machineIdentifier}...');
               
-              final tracksJson = await _libraryService.getTracks(token, serverUrl, libraryKey);
+              final serverToken = server.accessToken ?? token;
+              final tracksJson = await _libraryService.getTracks(serverToken, serverUrl, libraryKey);
               
               final tracks = tracksJson.map((json) {
                 return Track.fromPlexJson(
@@ -246,7 +247,8 @@ class _MobileServerSettingsPageState extends State<MobileServerSettingsPage> {
         
         if (serverUrl != null) {
           try {
-            final libraries = await _libraryService.getLibraries(token, serverUrl);
+            final serverToken = server.accessToken ?? token;
+            final libraries = await _libraryService.getLibraries(serverToken, serverUrl);
             final musicLibraries = libraries.where((l) => l.isMusicLibrary).toList();
             return MapEntry(server.machineIdentifier, musicLibraries.map((l) => l.toJson()).toList());
           } catch (e) {

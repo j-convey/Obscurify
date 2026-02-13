@@ -13,8 +13,10 @@ class PlaylistService {
   Future<List<Playlist>> syncPlaylists(String serverUrl, String token, String serverId) async {
     try {
       final playlists = await _fetchPlaylistsFromApi(serverUrl, token);
-      await _savePlaylistsToDb(playlists, serverId);
-      return playlists;
+      // Set serverId on playlists so downstream code can resolve the correct token
+      final playlistsWithServer = playlists.map((p) => p.copyWith(serverId: serverId)).toList();
+      await _dbService.playlists.saveAll(playlistsWithServer);
+      return playlistsWithServer;
     } catch (e) {
       debugPrint('PLAYLIST SERVICE: Error syncing playlists: $e');
       return await getLocalPlaylists();
@@ -23,9 +25,13 @@ class PlaylistService {
 
   /// Fetches playlists from Plex API without saving to database.
   /// Use this when you want to filter playlists before saving.
-  Future<List<Playlist>> fetchPlaylists(String serverUrl, String token) async {
+  Future<List<Playlist>> fetchPlaylists(String serverUrl, String token, {String serverId = ''}) async {
     try {
-      return await _fetchPlaylistsFromApi(serverUrl, token);
+      final playlists = await _fetchPlaylistsFromApi(serverUrl, token);
+      if (serverId.isNotEmpty) {
+        return playlists.map((p) => p.copyWith(serverId: serverId)).toList();
+      }
+      return playlists;
     } catch (e) {
       debugPrint('PLAYLIST SERVICE: Error fetching playlists: $e');
       return [];
@@ -36,8 +42,9 @@ class PlaylistService {
   Future<List<Map<String, dynamic>>> getPlaylistTracks(
     String serverUrl,
     String token,
-    String playlistId,
-  ) async {
+    String playlistId, {
+    String? serverId,
+  }) async {
     try {
       final uri = Uri.parse('$serverUrl/playlists/$playlistId/items').replace(
         queryParameters: {
@@ -46,13 +53,18 @@ class PlaylistService {
       );
 
       debugPrint('PLAYLIST SERVICE: Fetching tracks for playlist $playlistId');
+      debugPrint('PLAYLIST SERVICE: URL: $uri');
 
       final response = await http.get(
         uri,
-        headers: {'Accept': 'application/json'},
+        headers: {
+          'Accept': 'application/json',
+          'X-Plex-Token': token,
+        },
       );
 
       if (response.statusCode != 200) {
+        debugPrint('PLAYLIST SERVICE: Error response ${response.statusCode}: ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}');
         throw Exception('Failed to fetch playlist tracks: ${response.statusCode}');
       }
 
@@ -80,7 +92,7 @@ class PlaylistService {
           'key': trackJson['key'],
           'addedAt': trackJson['addedAt'],
           'Media': trackJson['Media'], // Preserve full Media structure for audio player
-          'serverId': null, // Will be set by the caller if needed
+          'serverId': serverId, // Set by caller for correct server resolution
         };
       }).toList();
     } catch (e) {
@@ -100,7 +112,10 @@ class PlaylistService {
     
     final response = await http.get(
       uri,
-      headers: {'Accept': 'application/json'},
+      headers: {
+        'Accept': 'application/json',
+        'X-Plex-Token': token,
+      },
     );
 
     if (response.statusCode != 200) {
@@ -122,9 +137,7 @@ class PlaylistService {
   }
 
   /// Saves playlists to the local database.
-  Future<void> _savePlaylistsToDb(List<Playlist> playlists, String serverId) async {
-    // Set the serverId on each playlist
-    final playlistsWithServer = playlists.map((p) => p.copyWith(serverId: serverId)).toList();
-    await _dbService.playlists.saveAll(playlistsWithServer);
+  Future<void> savePlaylistsToDb(List<Playlist> playlists) async {
+    await _dbService.playlists.saveAll(playlists);
   }
 }

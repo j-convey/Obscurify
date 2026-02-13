@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/models/track.dart';
 import '../../../../core/models/artist.dart';
-import '../../../../core/services/plex/plex_services.dart';
-import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/plex_connection_resolver.dart';
 import '../../../../core/services/audio_player_service.dart';
 import 'widgets/artist_header.dart';
 import 'widgets/artist_popular_tracks.dart';
@@ -26,8 +25,7 @@ class MobileArtistPage extends StatefulWidget {
 
 class _MobileArtistPageState extends State<MobileArtistPage> {
   final DatabaseService _db = DatabaseService();
-  final PlexServerService _serverService = PlexServerService();
-  final StorageService _storageService = StorageService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   
   List<Track> _topTracks = [];
   Artist? _artist;
@@ -71,11 +69,8 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
     try {
       final tracks = await _db.tracks.getByArtist(widget.artistId);
       final topTracks = tracks.take(5).toList();
-      final token = await _storageService.getPlexToken();
-      Map<String, String> urls = {};
-      if (token != null) {
-        urls = await _serverService.fetchServerUrlMap(token);
-      }
+      await _resolver.initialise();
+      final urls = await _resolver.fetchAndCacheServerUrls();
       
       Artist? artistDetails;
       if (tracks.isNotEmpty) {
@@ -92,7 +87,7 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
         setState(() {
           _topTracks = topTracks;
           _artist = artistDetails;
-          _currentToken = token;
+          _currentToken = _resolver.userToken;
           _serverUrls = urls;
           _isLoading = false;
         });
@@ -116,13 +111,15 @@ class _MobileArtistPageState extends State<MobileArtistPage> {
       return;
     }
 
+    final token = _resolver.getTokenForServer(track.serverId) ?? _currentToken!;
+
     final trackMaps = _topTracks.map((t) => t.toJson()).toList();
     final index = _topTracks.indexOf(track);
     
     widget.audioPlayerService!.setPlayQueue(trackMaps, index);
     await widget.audioPlayerService!.playTrack(
       track.toJson(),
-      _currentToken!,
+      token,
       serverUrl,
     );
   }

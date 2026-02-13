@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:obscurify/core/services/plex/plex_services.dart';
-import 'package:obscurify/core/services/storage_service.dart';
+import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/database/database_service.dart';
 import 'package:obscurify/desktop/features/collection/collection_page.dart';
 import 'package:obscurify/desktop/features/collection/widgets/collection_header.dart';
 
-/// Songs page that displays the user's entire library.
+/// Library page that displays the user's entire library.
 /// Uses the reusable CollectionPage component.
-class SongsPage extends StatefulWidget {
+class LibraryPage extends StatefulWidget {
   final AudioPlayerService? audioPlayerService;
   final void Function(Widget)? onNavigate;
   final VoidCallback? onHomeTap;
   final VoidCallback? onSettingsTap;
   final VoidCallback? onProfileTap;
   
-  const SongsPage({
+  const LibraryPage({
     super.key,
     this.audioPlayerService,
     this.onNavigate,
@@ -25,12 +24,11 @@ class SongsPage extends StatefulWidget {
   });
 
   @override
-  State<SongsPage> createState() => _SongsPageState();
+  State<LibraryPage> createState() => _LibraryPageState();
 }
 
-class _SongsPageState extends State<SongsPage> {
-  final PlexServerService _serverService = PlexServerService();
-  final StorageService _storageService = StorageService();
+class _LibraryPageState extends State<LibraryPage> {
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   final DatabaseService _dbService = DatabaseService();
   
   List<Map<String, dynamic>> _tracks = [];
@@ -47,41 +45,41 @@ class _SongsPageState extends State<SongsPage> {
   }
 
   Future<void> _loadTracks() async {
-    debugPrint('[SONGS] ===== _loadTracks() START =====');
+    debugPrint('[LIBRARY] ===== _loadTracks() START =====');
     final startTime = DateTime.now();
     setState(() {
-      debugPrint('[SONGS] setState: Setting _isLoading = true');
+      debugPrint('[LIBRARY] setState: Setting _isLoading = true');
       _isLoading = true;
       _error = null;
     });
 
     try {
-      debugPrint('[SONGS] Querying database...');
+      debugPrint('[LIBRARY] Querying database...');
       final dbStartTime = DateTime.now();
       // Use new type-safe repository pattern
       final trackModels = await _dbService.tracks.getAll();
       // Convert to maps for UI compatibility
       final cachedTracks = trackModels.map((t) => t.toJson()).toList();
       final dbEndTime = DateTime.now();
-      debugPrint('[SONGS] Database query took: ${dbEndTime.difference(dbStartTime).inMilliseconds}ms');
-      debugPrint('[SONGS] Retrieved ${cachedTracks.length} tracks from database');
+      debugPrint('[LIBRARY] Database query took: ${dbEndTime.difference(dbStartTime).inMilliseconds}ms');
+      debugPrint('[LIBRARY] Retrieved ${cachedTracks.length} tracks from database');
       
       if (cachedTracks.isNotEmpty) {
         if (mounted) {
-          debugPrint('[SONGS] Setting ${cachedTracks.length} tracks in state...');
+          debugPrint('[LIBRARY] Setting ${cachedTracks.length} tracks in state...');
           final setStateStartTime = DateTime.now();
           setState(() {
             _tracks = cachedTracks;
             _isLoading = false;
           });
           final setStateEndTime = DateTime.now();
-          debugPrint('[SONGS] setState completed in: ${setStateEndTime.difference(setStateStartTime).inMilliseconds}ms');
+          debugPrint('[LIBRARY] setState completed in: ${setStateEndTime.difference(setStateStartTime).inMilliseconds}ms');
         }
         
-        debugPrint('[SONGS] Loading server URLs...');
+        debugPrint('[LIBRARY] Loading server URLs...');
         await _loadServerUrls();
         final endTime = DateTime.now();
-        debugPrint('[SONGS] ===== _loadTracks() COMPLETE in ${endTime.difference(startTime).inMilliseconds}ms =====');
+        debugPrint('[LIBRARY] ===== _loadTracks() COMPLETE in ${endTime.difference(startTime).inMilliseconds}ms =====');
         return;
       }
 
@@ -103,16 +101,17 @@ class _SongsPageState extends State<SongsPage> {
 
   Future<void> _loadServerUrls() async {
     try {
-      final token = await _storageService.getPlexToken();
-      if (token == null) return;
-
-      _currentToken = token;
+      await _resolver.initialise();
+      _currentToken = _resolver.userToken;
+      _serverUrls = _resolver.serverUrls;
       
-      // Use centralized server URL fetching
-      _serverUrls = await _serverService.fetchServerUrlMap(token);
-      debugPrint('SONGS_PAGE: Loaded ${_serverUrls.length} server URLs');
+      if (_serverUrls.isEmpty && _currentToken != null) {
+        _serverUrls = await _resolver.fetchAndCacheServerUrls();
+      }
       
-      // Pass server URLs to audio service
+      debugPrint('LIBRARY_PAGE: Loaded ${_serverUrls.length} server URLs');
+      
+      // Pass server URLs and access tokens to audio service
       if (widget.audioPlayerService != null) {
         widget.audioPlayerService!.setServerUrls(_serverUrls);
       }
@@ -126,13 +125,13 @@ class _SongsPageState extends State<SongsPage> {
         setState(() {});
       }
     } catch (e) {
-      debugPrint('SONGS_PAGE: Error loading server URLs: $e');
+      debugPrint('LIBRARY_PAGE: Error loading server URLs: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('[SONGS] build() called - _isLoading: $_isLoading, tracks: ${_tracks.length}');
+    debugPrint('[LIBRARY] build() called - _isLoading: $_isLoading, tracks: ${_tracks.length}');
     
     if (_isLoading) {
       return const Scaffold(

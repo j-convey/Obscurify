@@ -36,7 +36,14 @@ class ServerSettingsService {
   }
 
   /// Persist token and optional username after a successful sign-in.
+  /// Clears all previous user data before saving new credentials to prevent
+  /// credentials/server data mismatch between different users.
   Future<void> saveCredentials(String token, String? username) async {
+    // Wipe all previous user data to prevent cross-user contamination
+    await _storageService.clearPlexCredentials();
+    await _dbService.clearAllData();
+    
+    // Save new credentials
     await _storageService.savePlexToken(token);
     if (username != null) {
       await _storageService.saveUsername(username);
@@ -84,6 +91,28 @@ class ServerSettingsService {
     return await _serverService.getServers(token);
   }
 
+  /// Restore access tokens from storage into PlexServer objects.
+  /// This is useful when reconstructing server objects without calling the API.
+  Future<List<PlexServer>> restoreServerAccessTokens(
+    List<PlexServer> servers,
+  ) async {
+    final accessTokenMap = await _storageService.getServerAccessTokenMap();
+    
+    return servers.map((server) {
+      final storedToken = accessTokenMap[server.machineIdentifier];
+      if (storedToken != null && server.accessToken == null) {
+        return PlexServer(
+          name: server.name,
+          machineIdentifier: server.machineIdentifier,
+          connections: server.connections,
+          accessToken: storedToken,
+        );
+      }
+      return server;
+    }).toList();
+  }
+
+  /// Fetch music libraries for a single server.
   /// Fetch music libraries for a single server.
   Future<List<Map<String, dynamic>>> getLibrariesForServer(
     String token,
@@ -93,7 +122,11 @@ class ServerSettingsService {
     if (serverUrl == null) return [];
 
     try {
-      final libraries = await _libraryService.getLibraries(token, serverUrl);
+      // Use server-specific accessToken for shared servers, fall back to user token for owned servers
+      final effectiveToken = server.accessToken ?? token;
+      debugPrint('SERVER_SETTINGS: Fetching libraries for ${server.name} - using ${server.accessToken != null ? "server accessToken" : "user token"}');
+      
+      final libraries = await _libraryService.getLibraries(effectiveToken, serverUrl);
       final musicLibraries = libraries.where((l) => l.isMusicLibrary).toList();
       return musicLibraries.map((l) => l.toJson()).toList();
     } catch (e) {
@@ -119,17 +152,26 @@ class ServerSettingsService {
     await saveServerUrlMap(servers);
   }
 
-  /// Persist a mapping of serverId → best connection URL.
+  /// Persist a mapping of serverId → best connection URL and access tokens.
   Future<void> saveServerUrlMap(List<PlexServer> servers) async {
     final Map<String, String> urlMap = {};
+    final Map<String, String> accessTokenMap = {};
+    
     for (var server in servers) {
       final serverUrl = _serverService.getBestConnectionUrlForServer(server);
       if (serverUrl != null) {
         urlMap[server.machineIdentifier] = serverUrl;
       }
+      if (server.accessToken != null) {
+        accessTokenMap[server.machineIdentifier] = server.accessToken!;
+      }
     }
+    
     await _storageService.saveServerUrlMap(urlMap);
+    await _storageService.saveServerAccessTokenMap(accessTokenMap);
+    
     debugPrint('Saved ${urlMap.length} server URLs to storage');
+    debugPrint('Saved ${accessTokenMap.length} server access tokens to storage');
   }
 
   // ============================================================
@@ -216,6 +258,10 @@ class ServerSettingsService {
       final serverUrl = _serverService.getBestConnectionUrlForServer(server);
       if (serverUrl == null) continue;
 
+      // Use server-specific accessToken for shared servers, fall back to user token
+      final effectiveToken = server.accessToken ?? token;
+      debugPrint('SYNC: Using ${server.accessToken != null ? "server accessToken" : "user token"} for ${server.name}');
+
       // --- Sync tracks ---
       for (var libraryKey in libraryKeys) {
         final libraryInfo = serverLibraries[server.machineIdentifier]
@@ -231,7 +277,7 @@ class ServerSettingsService {
             'Fetching library $libraryKey from ${server.machineIdentifier}...');
 
         final tracks =
-            await _libraryService.getTracks(token, serverUrl, libraryKey);
+            await _libraryService.getTracks(effectiveToken, serverUrl, libraryKey);
 
         onStatusChange('$libraryTitle (saving...)');
         debugPrint('Saving ${tracks.length} tracks from library $libraryKey...');
@@ -278,7 +324,7 @@ class ServerSettingsService {
             'Fetching albums from library $libraryKey on ${server.machineIdentifier}...');
 
         final albums =
-            await _libraryService.getAlbums(token, serverUrl, libraryKey);
+            await _libraryService.getAlbums(effectiveToken, serverUrl, libraryKey);
 
         if (albums.isNotEmpty) {
           onStatusChange('$libraryTitle (saving ${albums.length} albums...)');
@@ -312,7 +358,8 @@ class ServerSettingsService {
         // Fetch playlists without saving them first
         final playlists = await _playlistService.fetchPlaylists(
           serverUrl,
-          token,
+          effectiveToken,
+          serverId: server.machineIdentifier,
         );
 
         debugPrint(
@@ -329,6 +376,7 @@ class ServerSettingsService {
               serverUrl,
               token,
               playlist.id,
+              serverId: server.machineIdentifier,
             );
 
             final playlistTracks = tracksJson

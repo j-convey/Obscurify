@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/database/database_service.dart';
 import '../../../core/models/track.dart';
-import '../../../core/services/plex/plex_services.dart';
-import '../../../core/services/storage_service.dart';
+import '../../../core/services/plex_connection_resolver.dart';
 import '../../../core/services/audio_player_service.dart';
 import '../../../core/services/library_change_notifier.dart';
 import 'widgets/track_options_sheet.dart';
@@ -25,8 +24,7 @@ class MobileLibraryPage extends StatefulWidget {
 
 class _MobileLibraryPageState extends State<MobileLibraryPage> {
   final DatabaseService _db = DatabaseService();
-  final PlexServerService _serverService = PlexServerService();
-  final StorageService _storageService = StorageService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   final LibraryChangeNotifier _libraryNotifier = LibraryChangeNotifier();
   late Future<List<Track>> _tracksFuture;
 
@@ -55,18 +53,19 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
   }
 
   Future<void> _loadServerUrls() async {
-    final token = await _storageService.getPlexToken();
-    if (token != null) {
-      final urls = await _serverService.fetchServerUrlMap(token);
-      if (mounted) {
-        setState(() {
-          _currentToken = token;
-          _serverUrls = urls;
-        });
+    await _resolver.initialise();
+    final urls = await _resolver.fetchAndCacheServerUrls();
+    if (mounted) {
+      setState(() {
+        _currentToken = _resolver.userToken;
+        _serverUrls = urls;
+      });
 
-        // Provide server URLs to audio player service
-        widget.audioPlayerService?.setServerUrls(urls);
-      }
+      // Provide server URLs and access tokens to audio player service
+      widget.audioPlayerService?.setServerUrls(urls);
+      widget.audioPlayerService?.setServerAccessTokens(
+        {for (final id in urls.keys) id: _resolver.getTokenForServer(id) ?? ''},
+      );
     }
   }
 
@@ -103,13 +102,15 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
       return;
     }
 
+    final token = _resolver.getTokenForServer(track.serverId) ?? _currentToken!;
+
     final trackMaps = allTracks.map((t) => t.toJson()).toList();
     final index = allTracks.indexOf(track);
 
     widget.audioPlayerService!.setPlayQueue(trackMaps, index);
     await widget.audioPlayerService!.playTrack(
       track.toJson(),
-      _currentToken!,
+      token,
       serverUrl,
     );
   }

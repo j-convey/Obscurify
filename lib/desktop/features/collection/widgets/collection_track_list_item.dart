@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/services/plex/plex_services.dart';
+import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'package:obscurify/core/database/database_service.dart';
 import 'package:obscurify/desktop/features/album/album_page.dart';
 import 'package:obscurify/desktop/features/artist/artist_page.dart';
@@ -54,6 +55,7 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
   bool _isArtistHovered = false;
   final DatabaseService _dbService = DatabaseService();
   final PlexServerService _serverService = PlexServerService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
 
   @override
   Widget build(BuildContext context) {
@@ -191,6 +193,10 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
         return;
       }
 
+      // Use the resolver to get the correct token for this server
+      // (server-specific access token for shared servers, user token for owned)
+      final effectiveToken = _resolver.getTokenForServer(trackServerId) ?? widget.currentToken!;
+
       debugPrint('TRACK_ITEM: Track serverId: $trackServerId');
       debugPrint('TRACK_ITEM: Using server URL: $trackServerUrl');
       debugPrint('TRACK_ITEM: Calling setPlayQueue with ${widget.tracks.length} tracks, index ${widget.index}');
@@ -204,7 +210,7 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
       final playStartTime = DateTime.now();
       widget.audioPlayerService!.playTrack(
         widget.track,
-        widget.currentToken!,
+        effectiveToken,
         trackServerUrl,
       );
       final playEndTime = DateTime.now();
@@ -228,9 +234,12 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
               child: Builder(
                 builder: (context) {
                   final serverId = widget.track['serverId'] as String?;
-                  final serverUrl = serverId != null ? widget.serverUrls[serverId] : widget.currentServerUrl;
+                  final imageUrl = _resolver.buildImageUrl(
+                    widget.track['thumb'] as String?,
+                    serverId,
+                  );
 
-                  if (serverUrl == null) {
+                  if (imageUrl == null) {
                     return const Icon(
                       Icons.music_note,
                       color: Colors.grey,
@@ -239,7 +248,7 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
                   }
 
                   return Image.network(
-                    '$serverUrl${widget.track['thumb']}?X-Plex-Token=${widget.currentToken}',
+                    imageUrl,
                     width: 40,
                     height: 40,
                     fit: BoxFit.cover,
@@ -338,25 +347,26 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
   }
 
   void _navigateToArtist(String artistId, String artistName) async {
-    final token = widget.currentToken;
     final trackServerId = widget.track['serverId'] as String?;
+    // Use resolver for correct token (handles shared servers)
+    final effectiveToken = _resolver.getTokenForServer(trackServerId) ?? widget.currentToken;
 
-    String? serverUrl = widget.currentServerUrl;
-    if (token != null && trackServerId != null) {
+    String? serverUrl = _resolver.getUrlForServer(trackServerId) ?? widget.currentServerUrl;
+    if (effectiveToken != null && trackServerId != null && serverUrl == null) {
       try {
-        serverUrl = await _serverService.getUrlForServer(token, trackServerId);
+        serverUrl = await _serverService.getUrlForServer(effectiveToken, trackServerId);
       } catch (e) {
         debugPrint('TRACK_ITEM: Error getting server URL: $e');
       }
     }
     serverUrl ??= widget.currentServerUrl;
 
-    if (artistId.isNotEmpty && serverUrl != null && token != null && widget.onNavigate != null) {
+    if (artistId.isNotEmpty && serverUrl != null && effectiveToken != null && widget.onNavigate != null) {
       widget.onNavigate!(ArtistPage(
         artistId: artistId,
         artistName: artistName,
         serverUrl: serverUrl,
-        token: token,
+        token: effectiveToken,
         audioPlayerService: widget.audioPlayerService,
         onNavigate: widget.onNavigate,
       ));
@@ -380,22 +390,19 @@ class _CollectionTrackListItemState extends State<CollectionTrackListItem> {
         ? albumThumb
         : (trackThumb != null && trackThumb.isNotEmpty ? trackThumb : null);
     
-    // Resolve the correct server URL for this track's server
+    // Use resolver for the image URL (handles shared server tokens correctly)
     final trackServerId = widget.track['serverId'] as String?;
-    final resolvedServerUrl = trackServerId != null
-        ? (widget.serverUrls[trackServerId] ?? widget.currentServerUrl)
-        : widget.currentServerUrl;
+    final imageUrl = _resolver.buildImageUrl(thumbPath, trackServerId);
     
-    final imageUrl = thumbPath != null && resolvedServerUrl != null && widget.currentToken != null
-        ? '$resolvedServerUrl$thumbPath?X-Plex-Token=${widget.currentToken}'
-        : null;
+    // Get the effective token for this server (shared servers have their own token)
+    final effectiveToken = _resolver.getTokenForServer(trackServerId) ?? widget.currentToken;
     
     final albumPage = AlbumPage(
       title: albumTitle,
       subtitle: '$albumTitle • Album',
       audioPlayerService: widget.audioPlayerService,
       imageUrl: imageUrl,
-      currentToken: widget.currentToken,
+      currentToken: effectiveToken,
       serverUrls: widget.serverUrls,
       currentServerUrl: widget.currentServerUrl,
       onNavigate: widget.onNavigate,

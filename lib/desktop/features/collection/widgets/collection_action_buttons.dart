@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
+import 'package:obscurify/core/services/plex_connection_resolver.dart';
 
 /// Action buttons for collection pages (Play, Shuffle, Download)
 class CollectionActionButtons extends StatelessWidget {
@@ -30,15 +31,18 @@ class CollectionActionButtons extends StatelessWidget {
     if (tracks.isNotEmpty &&
         audioPlayerService != null &&
         currentToken != null) {
+      final resolver = PlexConnectionResolver();
       final track = tracks[0];
       final serverId = track['serverId'] as String?;
       final serverUrl = serverId != null ? serverUrls[serverId] : currentServerUrl;
+      // Use resolver for correct token (handles shared servers)
+      final effectiveToken = resolver.getTokenForServer(serverId) ?? currentToken!;
       
       if (serverUrl != null) {
         audioPlayerService!.setPlayQueue(tracks, 0);
         audioPlayerService!.playTrack(
           track,
-          currentToken!,
+          effectiveToken,
           serverUrl,
         );
       }

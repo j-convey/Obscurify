@@ -3,6 +3,7 @@ import 'package:obscurify/core/models/playlist.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'package:obscurify/core/services/playlist_service.dart';
 import 'package:obscurify/core/services/storage_service.dart';
+import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'package:obscurify/core/services/library_change_notifier.dart';
 import 'package:obscurify/desktop/features/playlists/playlist_detail_page.dart';
 
@@ -40,6 +41,7 @@ class SidePanelPlaylistList extends StatefulWidget {
 class _SidePanelPlaylistListState extends State<SidePanelPlaylistList> {
   final PlaylistService _playlistService = PlaylistService();
   final StorageService _storageService = StorageService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   List<Playlist> _playlists = [];
   bool _isLoading = true;
   String? _token;
@@ -66,19 +68,20 @@ class _SidePanelPlaylistListState extends State<SidePanelPlaylistList> {
 
   Future<void> _loadPlaylists() async {
     try {
-      final token = await _storageService.getPlexToken();
+      await _resolver.initialise();
+      final token = _resolver.userToken;
       if (token == null || token.isEmpty) {
         await _loadLocal();
         return;
       }
-      _token = token;
 
-      final serverUrl = await _storageService.getSelectedServerUrl();
-      if (serverUrl == null) {
+      final connection = await _resolver.getSelectedServerConnection();
+      if (connection == null) {
         await _loadLocal();
         return;
       }
-      _serverUrl = serverUrl;
+      _token = connection.token;
+      _serverUrl = connection.url;
 
       final selectedServers = await _storageService.getSelectedServers();
       String? serverId;
@@ -125,21 +128,31 @@ class _SidePanelPlaylistListState extends State<SidePanelPlaylistList> {
     }
   }
 
-  void _onPlaylistTap(Playlist playlist) {
+  void _onPlaylistTap(Playlist playlist) async {
     if (widget.onNavigate == null ||
         _serverUrl == null ||
         _token == null) return;
 
-    final imageUrl = playlist.composite != null
-        ? '$_serverUrl${playlist.composite}?X-Plex-Token=$_token'
-        : null;
+    // Ensure resolver is initialized with latest tokens
+    await _resolver.initialise();
+
+    final imageUrl = _buildImageUrl(playlist);
+    final serverId = playlist.serverId.isNotEmpty ? playlist.serverId : null;
+    final effectiveToken = _resolver.getTokenForServer(serverId) ?? _token!;
+
+    debugPrint('SIDE_PANEL: Navigating to playlist ${playlist.title}');
+    debugPrint('SIDE_PANEL: playlist.serverId: ${playlist.serverId}');
+    debugPrint('SIDE_PANEL: resolved serverId: $serverId');
+    debugPrint('SIDE_PANEL: effectiveToken from resolver: ${_resolver.getTokenForServer(serverId)}');
+    debugPrint('SIDE_PANEL: fallback _token: $_token');
+    debugPrint('SIDE_PANEL: final effectiveToken: $effectiveToken');
 
     widget.onNavigate!(
       PlaylistDetailPage(
         key: ValueKey('playlist_${playlist.id}'),
         playlist: playlist,
         serverUrl: _serverUrl!,
-        token: _token!,
+        token: effectiveToken,
         imageUrl: imageUrl,
         audioPlayerService: widget.audioPlayerService,
         onNavigate: widget.onNavigate,
@@ -258,9 +271,9 @@ class _SidePanelPlaylistListState extends State<SidePanelPlaylistList> {
   // ── Helpers ────────────────────────────────────────────────────────────
 
   String? _buildImageUrl(Playlist playlist) {
-    if (playlist.composite == null ||
-        _serverUrl == null ||
-        _token == null) return null;
+    final resolved = _resolver.buildImageUrl(playlist.composite, playlist.serverId);
+    if (resolved != null) return resolved;
+    if (playlist.composite == null || _serverUrl == null || _token == null) return null;
     return '$_serverUrl${playlist.composite}?X-Plex-Token=$_token';
   }
 

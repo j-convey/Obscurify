@@ -8,6 +8,7 @@ class StorageService {
   static const String _profileImagePathKey = 'profile_image_path';
   static const String _serverUrlKey = 'server_url';
   static const String _serverUrlMapKey = 'server_url_map';
+  static const String _serverAccessTokenMapKey = 'server_access_token_map';
   
   // AI API Keys
   static const String _aiProviderKey = 'ai_provider';
@@ -101,6 +102,29 @@ class StorageService {
     return null;
   }
 
+  // Save server access token map (machineIdentifier -> accessToken)
+  Future<void> saveServerAccessTokenMap(Map<String, String> tokenMap) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_serverAccessTokenMapKey, json.encode(tokenMap));
+  }
+
+  // Get server access token map (machineIdentifier -> accessToken)
+  Future<Map<String, String>> getServerAccessTokenMap() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString(_serverAccessTokenMapKey);
+    if (data != null) {
+      final Map<String, dynamic> decoded = json.decode(data);
+      return decoded.map((key, value) => MapEntry(key, value as String));
+    }
+    return {};
+  }
+
+  // Get the access token for a specific server by machine identifier
+  Future<String?> getServerAccessTokenById(String machineIdentifier) async {
+    final tokenMap = await getServerAccessTokenMap();
+    return tokenMap[machineIdentifier];
+  }
+
   // Save selected servers and libraries
   Future<void> saveSelectedServers(Map<String, List<String>> selections) async {
     final prefs = await SharedPreferences.getInstance();
@@ -119,12 +143,14 @@ class StorageService {
   }
 
   // Clear all Plex credentials
+  // Clear all Plex credentials
   Future<void> clearPlexCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_plexTokenKey);
     await prefs.remove(_usernameKey);
     await prefs.remove(_selectedServersKey);
     await prefs.remove(_serverUrlMapKey);
+    await prefs.remove(_serverAccessTokenMapKey);
   }
 
   // --- AI Settings Methods ---

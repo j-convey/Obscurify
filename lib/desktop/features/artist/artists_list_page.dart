@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:obscurify/core/models/artist.dart';
 import 'package:obscurify/core/database/database_service.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
-import 'package:obscurify/core/services/storage_service.dart';
+import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'artist_page.dart';
 
 /// Page displaying all artists in a grid with circular images.
@@ -28,7 +28,7 @@ class ArtistsListPage extends StatefulWidget {
 
 class _ArtistsListPageState extends State<ArtistsListPage> {
   final DatabaseService _dbService = DatabaseService();
-  final StorageService _storageService = StorageService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   final ScrollController _scrollController = ScrollController();
 
   List<Artist> _artists = [];
@@ -50,9 +50,10 @@ class _ArtistsListPageState extends State<ArtistsListPage> {
   }
 
   Future<void> _loadData() async {
-    final token = await _storageService.getPlexToken();
-    final serverUrl = await _storageService.getSelectedServerUrl() ??
-        await _storageService.getServerUrl();
+    await _resolver.initialise();
+    final connection = await _resolver.getSelectedServerConnection();
+    final token = connection?.token;
+    final serverUrl = connection?.url;
     final artists = await _dbService.artists.getAll();
 
     if (mounted) {

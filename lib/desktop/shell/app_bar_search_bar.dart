@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:obscurify/core/database/database_service.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
-import 'package:obscurify/core/services/storage_service.dart';
+import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'package:obscurify/desktop/features/artist/artist_page.dart';
 import 'package:obscurify/desktop/features/browse/browse_page.dart';
 
@@ -27,7 +27,7 @@ class _AppBarSearchBarState extends State<AppBarSearchBar> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final DatabaseService _dbService = DatabaseService();
-  final StorageService _storageService = StorageService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   final LayerLink _layerLink = LayerLink();
   
   List<Map<String, dynamic>> _trackResults = [];
@@ -35,7 +35,6 @@ class _AppBarSearchBarState extends State<AppBarSearchBar> {
   OverlayEntry? _overlayEntry;
   String? _token;
   String? _serverUrl;
-  Map<String, String> _serverUrls = {};
 
   @override
   void initState() {
@@ -56,14 +55,10 @@ class _AppBarSearchBarState extends State<AppBarSearchBar> {
   }
 
   Future<void> _loadCredentials() async {
-    _token = await _storageService.getPlexToken();
-    final serverUrl = await _storageService.getSelectedServerUrl(); // Use selected server URL
-    if (serverUrl != null) {
-      _serverUrl = serverUrl;
-    } else {
-      _serverUrl = widget.currentServerUrl; // Fallback to widget parameter
-    }
-    _serverUrls = await _storageService.getServerUrlMap();
+    await _resolver.initialise();
+    _token = _resolver.userToken;
+    final connection = await _resolver.getSelectedServerConnection();
+    _serverUrl = connection?.url ?? widget.currentServerUrl;
   }
 
   void _onSearchChanged() {
@@ -204,7 +199,7 @@ class _AppBarSearchBarState extends State<AppBarSearchBar> {
               child: artist['thumb'] != null
                   ? ClipOval(
                       child: Image.network(
-                        '$_serverUrl${artist['thumb']}?X-Plex-Token=$_token',
+                        _resolver.buildImageUrl(artist['thumb'] as String?, artist['serverId'] as String?) ?? '$_serverUrl${artist['thumb']}?X-Plex-Token=$_token',
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return const Icon(Icons.person, color: Colors.grey);
@@ -271,7 +266,7 @@ class _AppBarSearchBarState extends State<AppBarSearchBar> {
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: Image.network(
-                        '${widget.currentServerUrl ?? _serverUrl}${track['thumb']}?X-Plex-Token=${_token ?? widget.currentToken}',
+                        _resolver.buildImageUrl(track['thumb'] as String?, track['serverId'] as String?) ?? '${widget.currentServerUrl ?? _serverUrl}${track['thumb']}?X-Plex-Token=${_token ?? widget.currentToken}',
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return const Icon(Icons.music_note, color: Colors.grey);
@@ -316,9 +311,9 @@ class _AppBarSearchBarState extends State<AppBarSearchBar> {
   }
 
   void _navigateToArtist(Map<String, dynamic> artist) {
-    final token = _token ?? widget.currentToken;
     final serverId = artist['serverId'] as String?;
-    final serverUrl = serverId != null ? _serverUrls[serverId] : (widget.currentServerUrl ?? _serverUrl);
+    final token = _resolver.getTokenForServer(serverId) ?? _token ?? widget.currentToken;
+    final serverUrl = _resolver.getUrlForServer(serverId) ?? widget.currentServerUrl ?? _serverUrl;
     
     if (widget.onNavigate != null && token != null && serverUrl != null) {
       final ratingKey = artist['ratingKey'] as String?; // Use ratingKey for API calls
@@ -339,9 +334,9 @@ class _AppBarSearchBarState extends State<AppBarSearchBar> {
   }
 
   void _playTrack(Map<String, dynamic> track) async {
-    final token = _token ?? widget.currentToken;
     final serverId = track['serverId'] as String?;
-    final serverUrl = serverId != null ? _serverUrls[serverId] : (widget.currentServerUrl ?? _serverUrl);
+    final token = _resolver.getTokenForServer(serverId) ?? _token ?? widget.currentToken;
+    final serverUrl = _resolver.getUrlForServer(serverId) ?? widget.currentServerUrl ?? _serverUrl;
     
     if (widget.audioPlayerService != null && token != null && serverUrl != null) {
       // Get all tracks for queue context
@@ -423,7 +418,7 @@ class _AppBarSearchBarState extends State<AppBarSearchBar> {
               tooltip: 'Browse',
               onPressed: () {
                 if (widget.onNavigate != null) {
-                  widget.onNavigate!(BrowsePage(onNavigate: widget.onNavigate));
+                  widget.onNavigate!(BrowsePage(onNavigate: widget.onNavigate, audioPlayerService: widget.audioPlayerService));
                 }
               },
             ),

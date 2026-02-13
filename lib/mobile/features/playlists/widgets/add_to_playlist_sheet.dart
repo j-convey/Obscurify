@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/models/playlist.dart';
-import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/plex_connection_resolver.dart';
 import '../../../shared/widgets/plex_image.dart';
 
 class AddToPlaylistSheet extends StatefulWidget {
@@ -20,7 +20,7 @@ class AddToPlaylistSheet extends StatefulWidget {
 
 class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
   final DatabaseService _db = DatabaseService();
-  final StorageService _storageService = StorageService();
+  final PlexConnectionResolver _resolver = PlexConnectionResolver();
   List<Playlist> _playlists = [];
   Map<String, bool> _playlistMembership = {}; // playlistId -> is track in it
   bool _isLoading = true;
@@ -34,9 +34,10 @@ class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
   }
 
   Future<void> _loadData() async {
-    final token = await _storageService.getPlexToken();
-    final serverUrl = await _storageService.getSelectedServerUrl() ??
-        await _storageService.getServerUrl();
+    await _resolver.initialise();
+    final connection = await _resolver.getSelectedServerConnection();
+    final token = connection?.token;
+    final serverUrl = connection?.url;
     final playlists = await _db.playlists.getAll();
     final membership = <String, bool>{};
 
