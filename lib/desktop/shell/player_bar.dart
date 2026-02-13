@@ -6,6 +6,7 @@ import 'package:obscurify/core/models/playlist.dart';
 import 'package:obscurify/desktop/features/artist/artist_page.dart';
 import 'package:obscurify/core/utils/audio_quality_utils.dart';
 import 'package:obscurify/shared/widgets/add_to_playlist_dialog.dart';
+import 'package:obscurify/core/navigation/album_navigation_helper.dart';
 
 class PlayerBar extends StatefulWidget {
   final AudioPlayerService playerService;
@@ -39,6 +40,46 @@ class _PlayerBarState extends State<PlayerBar> {
     final minutes = duration.inMinutes;
     final seconds = twoDigits(duration.inSeconds.remainder(60));
     return '$minutes:$seconds';
+  }
+
+  /// Navigates to the album page for the current track
+  Future<void> _navigateToAlbum(Map<String, dynamic> track) async {
+    final albumRatingKey = track['parentRatingKey']?.toString();
+    final albumTitle = track['parentTitle'] as String? ?? track['album'] as String? ?? 'Unknown Album';
+    final albumThumb = track['parentThumb'] as String?;
+    final token = widget.playerService.currentToken;
+    final trackServerId = track['serverId'] as String?;
+
+    // Use centralized server URL lookup
+    String? serverUrl = widget.playerService.currentServerUrl;
+    if (token != null && trackServerId != null) {
+      try {
+        serverUrl = await _serverService.getUrlForServer(token, trackServerId);
+        debugPrint('PLAYER_BAR: Got URL for server $trackServerId: $serverUrl');
+      } catch (e) {
+        debugPrint('PLAYER_BAR: Error getting server URL: $e');
+      }
+    }
+    
+    // Fallback to current server URL if lookup failed
+    serverUrl ??= widget.playerService.currentServerUrl;
+
+    if (albumRatingKey == null || serverUrl == null || token == null || widget.onNavigate == null) {
+      debugPrint('PLAYER_BAR: Cannot navigate to album - missing data. albumRatingKey: $albumRatingKey, serverUrl: $serverUrl, token: ${token != null}, onNavigate: ${widget.onNavigate != null}');
+      return;
+    }
+
+    await AlbumNavigationHelper.navigateToAlbum(
+      context: context,
+      albumRatingKey: albumRatingKey,
+      albumTitle: albumTitle,
+      albumThumb: albumThumb,
+      serverUrl: serverUrl,
+      token: token,
+      audioPlayerService: widget.playerService,
+      onNavigate: widget.onNavigate,
+      dbService: _dbService,
+    );
   }
 
   /// Adds the current track to the "Liked Songs" playlist, creating it if needed.
@@ -141,36 +182,42 @@ class _PlayerBarState extends State<PlayerBar> {
                   flex: 3,
                   child: Row(
                     children: [
-                      // Album art
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[800],
-                          borderRadius: BorderRadius.circular(4),
+                      // Album art (clickable)
+                      MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: () => _navigateToAlbum(track),
+                          child: Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[800],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: track['thumb'] != null &&
+                                    widget.playerService.currentServerUrl != null &&
+                                    widget.playerService.currentToken != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Image.network(
+                                      '${widget.playerService.currentServerUrl}${track['thumb']}?X-Plex-Token=${widget.playerService.currentToken}',
+                                      width: 56,
+                                      height: 56,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return const Icon(
+                                          Icons.music_note,
+                                          color: Colors.grey,
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.music_note,
+                                    color: Colors.grey,
+                                  ),
+                          ),
                         ),
-                        child: track['thumb'] != null &&
-                                widget.playerService.currentServerUrl != null &&
-                                widget.playerService.currentToken != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: Image.network(
-                                  '${widget.playerService.currentServerUrl}${track['thumb']}?X-Plex-Token=${widget.playerService.currentToken}',
-                                  width: 56,
-                                  height: 56,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.music_note,
-                                      color: Colors.grey,
-                                    );
-                                  },
-                                ),
-                              )
-                            : const Icon(
-                                Icons.music_note,
-                                color: Colors.grey,
-                              ),
                       ),
                       const SizedBox(width: 12),
                       // Track details
@@ -179,15 +226,22 @@ class _PlayerBarState extends State<PlayerBar> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              track['title'] as String,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                            // Track title (clickable)
+                            GestureDetector(
+                              onTap: () => _navigateToAlbum(track),
+                              child: MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: Text(
+                                  track['title'] as String,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
                             GestureDetector(
