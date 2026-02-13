@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/audio_player_service.dart';
 import '../../../core/services/plex_connection_resolver.dart';
+import '../../../core/services/home_data_service.dart';
 import '../../../core/database/database_service.dart';
 import '../../../core/models/track.dart';
 import '../../../core/services/library_change_notifier.dart';
@@ -63,10 +64,22 @@ class _MobileHomePageState extends State<MobileHomePage> {
     // Load server info via resolver
     await _resolver.initialise();
     final urls = await _resolver.fetchAndCacheServerUrls();
+    final serverId = urls.keys.isNotEmpty ? urls.keys.first : null;
+    final serverUrl = serverId != null ? _resolver.getUrlForServer(serverId) : null;
+    
+    // Load new releases
+    List<CarouselItem> newReleases = [];
+    if (_resolver.userToken != null && serverUrl != null && serverUrl.isNotEmpty) {
+      newReleases = await _homeDataService.getNewReleases(
+        serverUrl: serverUrl,
+        token: _resolver.userToken!,
+      );
+    }
     
     if (mounted) {
       setState(() {
         _recentTracks = tracks;
+        _newReleases = newReleases;
         _currentToken = _resolver.userToken;
         _serverUrls = urls;
         _currentServerUrl = serverUrl;
@@ -216,7 +229,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
                       const SizedBox(height: 32),
                       
                       // New releases carousel
-                      if (_newReleases.isNotEmpty) ..[
+                      if (_newReleases.isNotEmpty) ...[
                         ContentCarousel(
                           title: 'New Releases',
                           items: _newReleases,
