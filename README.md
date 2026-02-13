@@ -98,6 +98,10 @@ Obscurify is open source and built with Flutter. Contributions welcome.
 
 **License**: Apache License 2.0
 
+## Support
+
+Love Obscurify? [Sponsor this project](https://github.com/sponsors/j-convey) to help keep it growing.
+
 ---
 
 Made with ❤️ for music collectors everywhere.
