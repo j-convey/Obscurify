@@ -128,7 +128,14 @@ class PlaylistService {
 
     debugPrint('PLAYLIST SERVICE: Found ${metadata.length} playlists');
 
-    return metadata.map((json) => Playlist.fromPlexJson(json)).toList();
+    final playlists = metadata
+        .map((json) => Playlist.fromPlexJson(json))
+        .where((playlist) => playlist.title != 'All Music')
+        .toList();
+
+    debugPrint('PLAYLIST SERVICE: After filtering, ${playlists.length} playlists (excluded "All Music")');
+
+    return playlists;
   }
 
   /// Retrieves playlists from the local database.
