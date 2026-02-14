@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
 
 class AppBarActions extends StatelessWidget {
   final VoidCallback? onNotificationsTap;
@@ -101,7 +102,7 @@ class AppBarActions extends StatelessWidget {
                 onProfileTap?.call();
                 break;
               case 'support':
-                onSupportTap?.call();
+                _launchSupportUrl();
                 break;
               case 'private_session':
                 onPrivateSessionTap?.call();
@@ -136,5 +137,12 @@ class AppBarActions extends StatelessWidget {
           ? const Icon(Icons.person, color: Colors.white, size: 18)
           : null,
     );
+  }
+
+  Future<void> _launchSupportUrl() async {
+    final url = Uri.parse('https://github.com/sponsors/j-convey');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
   }
 }

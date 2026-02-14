@@ -5,11 +5,13 @@ import 'server/server_settings_page.dart';
 class SettingsPage extends StatelessWidget {
   final void Function(Widget) onNavigate;
   final AudioPlayerService? audioPlayerService;
+  final VoidCallback? onAuthenticationChange;
 
   const SettingsPage({
     super.key,
     required this.onNavigate,
     this.audioPlayerService,
+    this.onAuthenticationChange,
   });
 
   @override
@@ -27,6 +29,7 @@ class SettingsPage extends StatelessWidget {
             onTap: () {
               onNavigate(ServerSettingsPage(
                 audioPlayerService: audioPlayerService,
+                onAuthenticationChange: onAuthenticationChange,
               ));
             },
           ),

@@ -9,10 +9,12 @@ import 'widgets/authentication_info_card.dart';
 
 class ServerSettingsPage extends StatefulWidget {
   final AudioPlayerService? audioPlayerService;
+  final VoidCallback? onAuthenticationChange;
 
   const ServerSettingsPage({
     super.key,
     this.audioPlayerService,
+    this.onAuthenticationChange,
   });
 
   @override
@@ -205,6 +207,9 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
 
         await _loadServersAndLibraries();
 
+        // Notify main screen to refresh profile picture
+        widget.onAuthenticationChange?.call();
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -276,6 +281,9 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
         _selectedLibraries = {};
         _syncStatus = null;
       });
+
+      // Notify main screen to clear profile picture
+      widget.onAuthenticationChange?.call();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

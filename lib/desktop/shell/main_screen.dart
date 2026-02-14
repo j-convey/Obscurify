@@ -7,6 +7,7 @@ import 'package:obscurify/core/services/storage_service.dart';
 import 'package:obscurify/core/services/plex/plex_services.dart';
 import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'package:obscurify/core/services/authentication_check_service.dart';
+import 'package:obscurify/core/database/database_service.dart';
 import 'package:obscurify/desktop/features/authentication/presentation/authentication_modal.dart';
 import 'package:obscurify/desktop/features/home/home_page.dart';
 import 'package:obscurify/desktop/features/settings/settings_page.dart';
@@ -78,11 +79,58 @@ class _MainScreenState extends State<MainScreen> {
     _navigateToPage(SettingsPage(
       onNavigate: _navigateToPage,
       audioPlayerService: _audioPlayerService,
+      onAuthenticationChange: _loadCredentials,
     ));
   }
 
   void _onProfileTap() {
     _navigateToPage(ProfilePage(storageService: _storageService));
+  }
+
+  Future<void> _onLogoutTap() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      // Stop and clear the player
+      await _audioPlayerService.stop();
+      
+      // Clear credentials and database
+      await _storageService.clearPlexCredentials();
+      await DatabaseService().clearAllData();
+      
+      // Clear profile picture state and reload
+      setState(() {
+        _profileImagePath = null;
+        _plexProfilePictureUrl = null;
+        _currentToken = null;
+        _currentServerUrl = null;
+      });
+      
+      // Reload credentials to refresh UI
+      await _loadCredentials();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Signed out successfully')),
+        );
+      }
+    }
   }
 
   Future<void> _loadCredentials() async {
@@ -106,17 +154,7 @@ class _MainScreenState extends State<MainScreen> {
     if (mounted) {
       setState(() {
         _sidePanelKey = UniqueKey(); // Force SidePanel to rebuild
-        _currentPage = HomePage(
-          onNavigate: _navigateToPage,
-          audioPlayerService: _audioPlayerService,
-          storageService: _storageService,
-          token: _currentToken,
-          serverUrl: _currentServerUrl,
-          onHomeTap: _onHomeTap,
-          onSettingsTap: _onSettingsTap,
-          onProfileTap: _onProfileTap,
-        );
-        _navigationHistory[_currentHistoryIndex] = _currentPage;
+        // Note: Don't change _currentPage here - stay on current page
       });
     }
   }
@@ -186,6 +224,7 @@ class _MainScreenState extends State<MainScreen> {
               onHomeTap: _onHomeTap,
               onSettingsTap: _onSettingsTap,
               onProfileTap: _onProfileTap,
+              onLogoutTap: _onLogoutTap,
               profileImagePath: _profileImagePath,
               plexProfilePictureUrl: _plexProfilePictureUrl,
             ),
