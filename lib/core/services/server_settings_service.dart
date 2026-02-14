@@ -38,7 +38,7 @@ class ServerSettingsService {
   /// Persist token and optional username after a successful sign-in.
   /// Clears all previous user data before saving new credentials to prevent
   /// credentials/server data mismatch between different users.
-  Future<void> saveCredentials(String token, String? username) async {
+  Future<void> saveCredentials(String token, String? username, {String? profilePictureUrl}) async {
     // Wipe all previous user data to prevent cross-user contamination
     await _storageService.clearPlexCredentials();
     await _dbService.clearAllData();
@@ -47,6 +47,9 @@ class ServerSettingsService {
     await _storageService.savePlexToken(token);
     if (username != null) {
       await _storageService.saveUsername(username);
+    }
+    if (profilePictureUrl != null) {
+      await _storageService.savePlexProfilePictureUrl(profilePictureUrl);
     }
   }
 

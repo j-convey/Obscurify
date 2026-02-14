@@ -6,6 +6,7 @@ class StorageService {
   static const String _usernameKey = 'plex_username';
   static const String _selectedServersKey = 'selected_servers';
   static const String _profileImagePathKey = 'profile_image_path';
+  static const String _plexProfilePictureUrlKey = 'plex_profile_picture_url';
   static const String _serverUrlKey = 'server_url';
   static const String _serverUrlMapKey = 'server_url_map';
   static const String _serverAccessTokenMapKey = 'server_access_token_map';
@@ -51,6 +52,18 @@ class StorageService {
   Future<String?> getProfileImagePath() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_profileImagePathKey);
+  }
+
+  // Save Plex profile picture URL
+  Future<void> savePlexProfilePictureUrl(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_plexProfilePictureUrlKey, url);
+  }
+
+  // Get Plex profile picture URL
+  Future<String?> getPlexProfilePictureUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_plexProfilePictureUrlKey);
   }
 
   // Save server URL (legacy - kept for backward compatibility)
@@ -151,6 +164,8 @@ class StorageService {
     await prefs.remove(_selectedServersKey);
     await prefs.remove(_serverUrlMapKey);
     await prefs.remove(_serverAccessTokenMapKey);
+    await prefs.remove(_profileImagePathKey);
+    await prefs.remove(_plexProfilePictureUrlKey);
   }
 
   // --- AI Settings Methods ---

@@ -36,6 +36,8 @@ class _MainScreenState extends State<MainScreen> {
   int _currentHistoryIndex = -1;
   String? _currentToken;
   String? _currentServerUrl;
+  String? _profileImagePath;
+  String? _plexProfilePictureUrl;
   Key _sidePanelKey = UniqueKey();
 
   @override
@@ -90,6 +92,10 @@ class _MainScreenState extends State<MainScreen> {
     // Get the selected server connection (handles both owned and shared servers)
     final connection = await _resolver.getSelectedServerConnection();
     _currentServerUrl = connection?.url;
+    
+    // Load profile picture data
+    _profileImagePath = await _storageService.getProfileImagePath();
+    _plexProfilePictureUrl = await _storageService.getPlexProfilePictureUrl();
     
     // Update audio player with server URLs and access tokens
     _audioPlayerService.setServerUrls(_resolver.serverUrls);
@@ -180,6 +186,8 @@ class _MainScreenState extends State<MainScreen> {
               onHomeTap: _onHomeTap,
               onSettingsTap: _onSettingsTap,
               onProfileTap: _onProfileTap,
+              profileImagePath: _profileImagePath,
+              plexProfilePictureUrl: _plexProfilePictureUrl,
             ),
             Expanded(
               child: Padding(

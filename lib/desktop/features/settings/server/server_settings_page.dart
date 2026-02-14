@@ -191,7 +191,11 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
       final result = await _logic.signIn();
 
       if (result['success'] == true) {
-        await _logic.saveCredentials(result['token'], result['username']);
+        await _logic.saveCredentials(
+          result['token'],
+          result['username'],
+          profilePictureUrl: result['profilePictureUrl'],
+        );
 
         if (!mounted) return;
         setState(() {

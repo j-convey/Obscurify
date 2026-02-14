@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 
 class AppBarActions extends StatelessWidget {
   final VoidCallback? onNotificationsTap;
@@ -8,6 +9,8 @@ class AppBarActions extends StatelessWidget {
   final VoidCallback? onPrivateSessionTap;
   final VoidCallback? onSettingsTap;
   final VoidCallback? onLogoutTap;
+  final String? profileImagePath;
+  final String? plexProfilePictureUrl;
 
   const AppBarActions({
     super.key,
@@ -18,6 +21,8 @@ class AppBarActions extends StatelessWidget {
     this.onPrivateSessionTap,
     this.onSettingsTap,
     this.onLogoutTap,
+    this.profileImagePath,
+    this.plexProfilePictureUrl,
   });
 
   @override
@@ -45,11 +50,7 @@ class AppBarActions extends StatelessWidget {
         // Profile dropdown
         PopupMenuButton<String>(
           offset: const Offset(0, 50),
-          icon: CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.grey[800],
-            child: const Icon(Icons.person, color: Colors.white, size: 18),
-          ),
+          icon: _buildProfileAvatar(),
           color: Colors.grey[900],
           itemBuilder: (BuildContext context) => [
             PopupMenuItem<String>(
@@ -115,6 +116,25 @@ class AppBarActions extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildProfileAvatar() {
+    // Prefer local file, then Plex URL, then default icon
+    ImageProvider? imageProvider;
+    if (profileImagePath != null && profileImagePath!.isNotEmpty) {
+      imageProvider = FileImage(File(profileImagePath!));
+    } else if (plexProfilePictureUrl != null && plexProfilePictureUrl!.isNotEmpty) {
+      imageProvider = NetworkImage(plexProfilePictureUrl!);
+    }
+
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: Colors.grey[800],
+      backgroundImage: imageProvider,
+      child: imageProvider == null
+          ? const Icon(Icons.person, color: Colors.white, size: 18)
+          : null,
     );
   }
 }

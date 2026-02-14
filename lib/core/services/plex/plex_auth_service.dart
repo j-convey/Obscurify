@@ -45,6 +45,7 @@ class PlexAuthService {
             'success': true,
             'token': token,
             'username': userInfo?['username'] ?? userInfo?['email'],
+            'profilePictureUrl': userInfo?['thumb'] as String?,
           };
         }
       }

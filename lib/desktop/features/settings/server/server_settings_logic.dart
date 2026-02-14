@@ -80,8 +80,8 @@ class ServerSettingsLogic {
     await _service.signOut();
   }
 
-  Future<void> saveCredentials(String token, String username) async {
-    await _service.saveCredentials(token, username);
+  Future<void> saveCredentials(String token, String username, {String? profilePictureUrl}) async {
+    await _service.saveCredentials(token, username, profilePictureUrl: profilePictureUrl);
   }
 
   Future<String?> getPlexToken() async {

@@ -24,6 +24,8 @@ class ObscurifyAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String? currentToken;
   final String? currentServerUrl;
   final void Function(Widget)? onNavigate;
+  final String? profileImagePath;
+  final String? plexProfilePictureUrl;
   
   const ObscurifyAppBar({
     super.key,
@@ -44,6 +46,8 @@ class ObscurifyAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.currentToken,
     this.currentServerUrl,
     this.onNavigate,
+    this.profileImagePath,
+    this.plexProfilePictureUrl,
   });
 
   @override
@@ -131,6 +135,8 @@ class ObscurifyAppBar extends StatelessWidget implements PreferredSizeWidget {
                     onPrivateSessionTap: onPrivateSessionTap,
                     onSettingsTap: onSettingsTap,
                     onLogoutTap: onLogoutTap,
+                    profileImagePath: profileImagePath,
+                    plexProfilePictureUrl: plexProfilePictureUrl,
                   ),
                   
                   const SizedBox(width: 8),

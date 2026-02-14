@@ -70,7 +70,11 @@ class _AuthenticationModalState extends State<AuthenticationModal> {
       final result = await widget.authService.signIn();
       if (result['success'] == true && mounted) {
         // Save credentials before showing library setup
-        await _logic.saveCredentials(result['token'], result['username']);
+        await _logic.saveCredentials(
+          result['token'],
+          result['username'],
+          profilePictureUrl: result['profilePictureUrl'],
+        );
         
         if (!mounted) return;
         Navigator.pop(context); // Close loading dialog

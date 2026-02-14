@@ -16,6 +16,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   late final StorageService _storageService;
   String? _profileImagePath;
+  String? _plexProfilePictureUrl;
   String _userName = 'Plex User';
 
   @override
@@ -27,10 +28,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadProfileData() async {
     final path = await _storageService.getProfileImagePath();
+    final plexPictureUrl = await _storageService.getPlexProfilePictureUrl();
     final name = await _storageService.getUsername();
     if (mounted) {
       setState(() {
         _profileImagePath = path;
+        _plexProfilePictureUrl = plexPictureUrl;
         if (name != null) _userName = name;
       });
     }
@@ -47,6 +50,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ProfileHeader(
               userName: _userName,
               profileImagePath: _profileImagePath,
+              plexProfilePictureUrl: _plexProfilePictureUrl,
               onEditPhoto: () => _handleImagePick(context),
             ),
             Padding(

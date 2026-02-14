@@ -184,7 +184,11 @@ class _MobileServerSettingsPageState extends State<MobileServerSettingsPage> {
       final result = await _service.signIn();
       
       if (result['success'] == true) {
-        await _service.saveCredentials(result['token'], result['username']);
+        await _service.saveCredentials(
+          result['token'],
+          result['username'],
+          profilePictureUrl: result['profilePictureUrl'],
+        );
         
         if (!mounted) return;
         setState(() {

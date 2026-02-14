@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 
 class ProfileHeader extends StatelessWidget {
   final String userName;
   final String? profileImagePath;
+  final String? plexProfilePictureUrl;
   final VoidCallback onEditPhoto;
 
   const ProfileHeader({
     super.key,
     required this.userName,
     this.profileImagePath,
+    this.plexProfilePictureUrl,
     required this.onEditPhoto,
   });
 
@@ -39,12 +42,23 @@ class ProfileHeader extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
+    // Prefer local file, then Plex URL, then default icon
+    ImageProvider? imageProvider;
+    if (profileImagePath != null && profileImagePath!.isNotEmpty) {
+      imageProvider = FileImage(File(profileImagePath!));
+    } else if (plexProfilePictureUrl != null && plexProfilePictureUrl!.isNotEmpty) {
+      imageProvider = NetworkImage(plexProfilePictureUrl!);
+    }
+    
     return Stack(
       children: [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 96,
-          backgroundColor: Color(0xFF282828),
-          child: Icon(Icons.person, size: 100, color: Colors.white54),
+          backgroundColor: const Color(0xFF282828),
+          backgroundImage: imageProvider,
+          child: imageProvider == null
+              ? const Icon(Icons.person, size: 100, color: Colors.white54)
+              : null,
         ),
         Positioned.fill(
           child: Material(
