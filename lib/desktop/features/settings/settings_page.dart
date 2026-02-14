@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:obscurify/core/services/audio_player_service.dart';
 import 'server/server_settings_page.dart';
+import 'about_page.dart';
 
 class SettingsPage extends StatelessWidget {
   final void Function(Widget) onNavigate;
@@ -41,7 +42,7 @@ class SettingsPage extends StatelessWidget {
                 const Text('App information', style: TextStyle(color: Colors.grey)),
             trailing: const Icon(Icons.chevron_right, color: Colors.white),
             onTap: () {
-              // TODO: Implement About page
+              onNavigate(const AboutPage());
             },
           ),
         ],
