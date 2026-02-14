@@ -62,6 +62,9 @@ class CollectionPage extends StatefulWidget {
   /// Profile button callback
   final VoidCallback? onProfileTap;
 
+  /// Callback when the title is tapped (e.g., for renaming playlists)
+  final VoidCallback? onTitleTap;
+
   const CollectionPage({
     super.key,
     required this.title,
@@ -81,6 +84,7 @@ class CollectionPage extends StatefulWidget {
     this.onHomeTap,
     this.onSettingsTap,
     this.onProfileTap,
+    this.onTitleTap,
   });
 
   @override
@@ -316,6 +320,7 @@ class _CollectionPageState extends State<CollectionPage> {
                   coverImage: widget.coverImage,
                   imageUrl: widget.imageUrl,
                   gradientColors: widget.gradientColors,
+                  onTitleTap: widget.onTitleTap,
                 ),
               ),
               SliverToBoxAdapter(

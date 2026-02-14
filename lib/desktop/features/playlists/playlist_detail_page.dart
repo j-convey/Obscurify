@@ -5,6 +5,7 @@ import 'package:obscurify/core/services/playlist_service.dart';
 import 'package:obscurify/core/services/plex_connection_resolver.dart';
 import 'package:obscurify/desktop/features/collection/collection_page.dart';
 import 'package:obscurify/desktop/features/collection/widgets/collection_header.dart';
+import 'package:obscurify/desktop/features/playlists/widgets/rename_playlist_dialog.dart';
 
 /// Full-screen detail page for a single playlist.
 ///
@@ -43,10 +44,12 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
   List<Map<String, dynamic>>? _tracks;
   bool _isLoading = true;
   String? _error;
+  String? _currentTitle;
 
   @override
   void initState() {
     super.initState();
+    _currentTitle = widget.playlist.title;
     _loadPlaylistTracks();
   }
 
@@ -77,6 +80,35 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _showRenameDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => RenamePlaylistDialog(
+        currentName: _currentTitle ?? widget.playlist.title,
+        onRename: (newName) async {
+          await _playlistService.renamePlaylist(
+            widget.serverUrl,
+            widget.token,
+            widget.playlist.id,
+            newName,
+            serverId: widget.playlist.serverId.isNotEmpty ? widget.playlist.serverId : null,
+          );
+          if (mounted) {
+            setState(() {
+              _currentTitle = newName;
+            });
+          }
+        },
+      ),
+    );
+
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Playlist renamed successfully')),
+      );
     }
   }
 
@@ -112,7 +144,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
     final effectiveToken = _resolver.getTokenForServer(serverId) ?? widget.token;
 
     return CollectionPage(
-      title: widget.playlist.title,
+      title: _currentTitle ?? widget.playlist.title,
       subtitle: '${widget.playlist.leafCount} songs',
       collectionType: CollectionType.playlist,
       audioPlayerService: widget.audioPlayerService,
@@ -126,6 +158,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
       onHomeTap: widget.onHomeTap,
       onSettingsTap: widget.onSettingsTap,
       onProfileTap: widget.onProfileTap,
+      onTitleTap: _showRenameDialog,
     );
   }
 }

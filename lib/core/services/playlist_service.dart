@@ -147,4 +147,55 @@ class PlaylistService {
   Future<void> savePlaylistsToDb(List<Playlist> playlists) async {
     await _dbService.playlists.saveAll(playlists);
   }
+
+  /// Renames a playlist on the Plex server and updates the local database.
+  Future<void> renamePlaylist(
+    String serverUrl,
+    String token,
+    String playlistId,
+    String newName, {
+    String? serverId,
+  }) async {
+    try {
+      final uri = Uri.parse('$serverUrl/playlists/$playlistId').replace(
+        queryParameters: {
+          'X-Plex-Token': token,
+          'title': newName,
+        },
+      );
+
+      debugPrint('PLAYLIST SERVICE: Renaming playlist $playlistId to "$newName"');
+
+      final response = await http.put(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'X-Plex-Token': token,
+        },
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint('PLAYLIST SERVICE: Error response ${response.statusCode}: ${response.body}');
+        throw Exception('Failed to rename playlist: ${response.statusCode}');
+      }
+
+      debugPrint('PLAYLIST SERVICE: Successfully renamed playlist');
+
+      // Update local database if we have a serverId
+      if (serverId != null && serverId.isNotEmpty) {
+        final playlists = await getLocalPlaylists();
+        final playlistIndex = playlists.indexWhere((p) => p.id == playlistId);
+        
+        if (playlistIndex != -1) {
+          final updatedPlaylist = playlists[playlistIndex].copyWith(title: newName);
+          playlists[playlistIndex] = updatedPlaylist;
+          await _dbService.playlists.saveAll(playlists);
+          debugPrint('PLAYLIST SERVICE: Updated local database');
+        }
+      }
+    } catch (e) {
+      debugPrint('PLAYLIST SERVICE: Error renaming playlist: $e');
+      rethrow;
+    }
+  }
 }

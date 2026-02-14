@@ -18,6 +18,7 @@ class CollectionHeader extends StatelessWidget {
   final Widget? coverImage;
   final String? imageUrl;
   final List<Color>? gradientColors;
+  final VoidCallback? onTitleTap;
 
   const CollectionHeader({
     super.key,
@@ -28,6 +29,7 @@ class CollectionHeader extends StatelessWidget {
     this.coverImage,
     this.imageUrl,
     this.gradientColors,
+    this.onTitleTap,
   });
 
   String get _typeLabel {
@@ -235,16 +237,22 @@ class CollectionHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 72,
-                    fontWeight: FontWeight.w900,
-                    height: 1.0,
+                GestureDetector(
+                  onTap: onTitleTap,
+                  child: MouseRegion(
+                    cursor: onTitleTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 72,
+                        fontWeight: FontWeight.w900,
+                        height: 1.0,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 24),
                 Row(
