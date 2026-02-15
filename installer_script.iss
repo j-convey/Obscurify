@@ -2,7 +2,7 @@
 ; This script creates a single installer executable for the Windows application
 
 #define MyAppName "Obscurify"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.2"
 #define MyAppPublisher "jconvey"
 #define MyAppExeName "obscurify.exe"
 #define MyAppAssocName MyAppName + " File"
